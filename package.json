@@ -1,6 +1,9 @@
 {
   "name": "finatlas",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
