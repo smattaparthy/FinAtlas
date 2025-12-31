@@ -1,0 +1,36 @@
+{
+  "name": "@finatlas/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "@prisma/client": "^5.20.0",
+    "jose": "^5.9.0",
+    "argon2": "^0.41.0",
+    "zod": "^3.23.0",
+    "@ant-design/charts": "^2.2.0",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.5.0",
+    "@finatlas/engine": "workspace:*",
+    "@finatlas/schemas": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.6.3",
+    "prisma": "^5.20.0"
+  }
+}
