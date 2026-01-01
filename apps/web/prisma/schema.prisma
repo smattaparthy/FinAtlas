@@ -8,17 +8,14 @@ datasource db {
 }
 
 // ============== AUTH ==============
-
-enum UserRole {
-  ADMIN
-  USER
-}
+// UserRole values: "ADMIN", "USER"
 
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String
-  role         UserRole @default(USER)
+  name         String?
+  role         String   @default("USER")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -32,8 +29,8 @@ model Household {
   name        String
   ownerUserId String
   anchorDate  DateTime @default(now())
-  startDate   DateTime
-  endDate     DateTime
+  startDate   DateTime?
+  endDate     DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -45,15 +42,19 @@ model Household {
 }
 
 model HouseholdMember {
-  id          String   @id @default(cuid())
-  householdId String
-  name        String
-  roleTag     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  householdId   String
+  name          String
+  birthDate     DateTime?
+  retirementAge Int?
+  roleTag       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  household Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
   incomes   Income[]
+  accounts  Account[]
+  loans     Loan[]
 
   @@index([householdId])
 }
@@ -64,20 +65,21 @@ model Scenario {
   id          String   @id @default(cuid())
   householdId String
   name        String
+  description String?
   isBaseline  Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  household     Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  assumptions   ScenarioAssumption?
-  taxProfile    TaxProfile?
-  incomes       Income[]
-  expenses      Expense[]
-  accounts      Account[]
-  contributions Contribution[]
-  loans         Loan[]
-  goals         Goal[]
-  cache         EngineResultCache?
+  household   Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  assumptions ScenarioAssumption?
+  taxProfile  TaxProfile?
+  incomes     Income[]
+  expenses    Expense[]
+  accounts    Account[]
+  loans       Loan[]
+  goals       Goal[]
+  importLogs  ImportLog[]
+  cache       EngineResultCache?
 
   @@index([householdId])
 }
@@ -85,11 +87,10 @@ model Scenario {
 model ScenarioAssumption {
   id                      String   @id @default(cuid())
   scenarioId              String   @unique
-  inflationRatePct        Float    @default(3.0)
-  taxableInterestYieldPct Float    @default(1.5)
-  taxableDividendYieldPct Float    @default(1.8)
-  realizedStGainPct       Float    @default(2.0)
-  realizedLtGainPct       Float    @default(4.0)
+  projectionYears         Int      @default(30)
+  inflationRate           Float    @default(0.025)
+  defaultGrowthRate       Float    @default(0.07)
+  retirementWithdrawalRate Float   @default(0.04)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
@@ -97,75 +98,58 @@ model ScenarioAssumption {
 }
 
 // ============== TAX ==============
-
-enum FilingStatus {
-  SINGLE
-  MFJ
-  HOH
-}
+// FilingStatus values: "SINGLE", "MFJ", "HOH"
+// TaxJurisdiction values: "FEDERAL", "STATE"
 
 model TaxProfile {
-  id                      String       @id @default(cuid())
-  scenarioId              String       @unique
-  stateCode               String
-  filingStatus            FilingStatus
-  taxYear                 Int
-  includePayrollTaxes     Boolean      @default(true)
-  advancedOverridesEnabled Boolean     @default(false)
-  payrollOverrides        Json?
-  createdAt               DateTime     @default(now())
-  updatedAt               DateTime     @updatedAt
+  id                       String   @id @default(cuid())
+  scenarioId               String   @unique
+  filingStatus             String   @default("SINGLE")
+  state                    String?
+  taxYear                  Int      @default(2024)
+  includePayrollTaxes      Boolean  @default(true)
+  advancedOverridesEnabled Boolean  @default(false)
+  payrollOverrides         String?  // JSON string
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 
-  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
-}
-
-enum TaxJurisdiction {
-  FEDERAL
-  STATE
+  scenario Scenario   @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  taxRules TaxRule[]
 }
 
 model TaxRule {
-  id           String          @id @default(cuid())
-  jurisdiction TaxJurisdiction
-  stateCode    String?
-  taxYear      Int
-  rulesJson    Json
-  meta         Json?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  id           String   @id @default(cuid())
+  taxProfileId String
+  jurisdiction String   // "FEDERAL" or "STATE"
+  bracketStart Float
+  bracketEnd   Float?
+  rate         Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  @@unique([jurisdiction, stateCode, taxYear])
+  taxProfile TaxProfile @relation(fields: [taxProfileId], references: [id], onDelete: Cascade)
+
+  @@index([taxProfileId])
 }
 
 // ============== INCOME ==============
-
-enum Frequency {
-  MONTHLY
-  BIWEEKLY
-  WEEKLY
-  ANNUAL
-  ONE_TIME
-}
-
-enum GrowthRule {
-  NONE
-  TRACK_INFLATION
-  CUSTOM_PERCENT
-}
+// Frequency values: "MONTHLY", "BIWEEKLY", "WEEKLY", "ANNUAL", "ONE_TIME"
+// GrowthRule values: "NONE", "FIXED", "INFLATION", "INFLATION_PLUS"
 
 model Income {
-  id         String     @id @default(cuid())
-  scenarioId String
-  memberId   String?
-  name       String
-  amount     Float
-  frequency  Frequency
-  startDate  DateTime
-  endDate    DateTime?
-  growthRule GrowthRule @default(NONE)
-  growthPct  Float?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id          String    @id @default(cuid())
+  scenarioId  String
+  memberId    String?
+  name        String
+  amount      Float
+  frequency   String    @default("ANNUAL")
+  startDate   DateTime
+  endDate     DateTime?
+  growthRule  String    @default("NONE")
+  growthRate  Float?
+  isTaxable   Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   scenario Scenario         @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
   member   HouseholdMember? @relation(fields: [memberId], references: [id], onDelete: SetNull)
@@ -176,19 +160,19 @@ model Income {
 // ============== EXPENSE ==============
 
 model Expense {
-  id          String     @id @default(cuid())
-  scenarioId  String
-  category    String
-  name        String?
-  amount      Float
-  frequency   Frequency
-  startDate   DateTime
-  endDate     DateTime?
-  growthRule  GrowthRule @default(NONE)
-  growthPct   Float?
-  isEssential Boolean    @default(false)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id              String    @id @default(cuid())
+  scenarioId      String
+  name            String
+  amount          Float
+  frequency       String    @default("MONTHLY")
+  startDate       DateTime
+  endDate         DateTime?
+  growthRule      String    @default("INFLATION")
+  growthRate      Float?
+  category        String?
+  isDiscretionary Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
 
@@ -196,23 +180,22 @@ model Expense {
 }
 
 // ============== INVESTMENT ==============
-
-enum AccountType {
-  TAXABLE
-  TRADITIONAL
-  ROTH
-}
+// AccountType values: "TRADITIONAL_401K", "ROTH_401K", "TRADITIONAL_IRA", "ROTH_IRA", "BROKERAGE", "SAVINGS", "HSA", "529"
 
 model Account {
-  id                String      @id @default(cuid())
-  scenarioId        String
-  name              String
-  type              AccountType
-  expectedReturnPct Float       @default(7.0)
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  id          String    @id @default(cuid())
+  scenarioId  String
+  memberId    String?
+  name        String
+  type        String    @default("BROKERAGE")
+  balance     Float     @default(0)
+  growthRule  String    @default("FIXED")
+  growthRate  Float?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  scenario      Scenario       @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  scenario      Scenario          @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  member        HouseholdMember?  @relation(fields: [memberId], references: [id], onDelete: SetNull)
   holdings      Holding[]
   contributions Contribution[]
 
@@ -222,11 +205,10 @@ model Account {
 model Holding {
   id        String    @id @default(cuid())
   accountId String
-  ticker    String
+  symbol    String
+  name      String?
   shares    Float
-  avgPrice  Float
-  lastPrice Float?
-  asOfDate  DateTime?
+  costBasis Float?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -236,69 +218,59 @@ model Holding {
 }
 
 model Contribution {
-  id            String    @id @default(cuid())
-  scenarioId    String
-  accountId     String
-  amountMonthly Float
-  startDate     DateTime
-  endDate       DateTime?
-  escalationPct Float?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  accountId          String
+  amount             Float
+  frequency          String    @default("ANNUAL")
+  startDate          DateTime
+  endDate            DateTime?
+  employerMatch      Float?
+  employerMatchLimit Float?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
-  account  Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
-  @@index([scenarioId])
   @@index([accountId])
 }
 
 // ============== LOAN ==============
-
-enum LoanType {
-  AUTO
-  STUDENT
-  PERSONAL
-  OTHER
-}
+// LoanType values: "MORTGAGE", "AUTO", "STUDENT", "PERSONAL", "HELOC", "OTHER"
 
 model Loan {
-  id                     String   @id @default(cuid())
-  scenarioId             String
-  type                   LoanType
-  name                   String
-  principal              Float
-  aprPct                 Float
-  termMonths             Int
-  startDate              DateTime
-  paymentOverrideMonthly Float?
-  extraPaymentMonthly    Float?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id             String    @id @default(cuid())
+  scenarioId     String
+  memberId       String?
+  name           String
+  type           String    @default("OTHER")
+  principal      Float
+  currentBalance Float
+  interestRate   Float
+  monthlyPayment Float
+  startDate      DateTime
+  termMonths     Int
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  scenario Scenario         @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  member   HouseholdMember? @relation(fields: [memberId], references: [id], onDelete: SetNull)
 
   @@index([scenarioId])
 }
 
 // ============== GOAL ==============
-
-enum GoalType {
-  COLLEGE
-  HOME_PURCHASE
-  RETIREMENT
-}
+// GoalType values: "RETIREMENT", "EDUCATION", "MAJOR_PURCHASE", "EMERGENCY_FUND", "CUSTOM"
 
 model Goal {
-  id               String   @id @default(cuid())
-  scenarioId       String
-  type             GoalType
-  name             String
-  targetAmountReal Float
-  targetDate       DateTime
-  priority         Int      @default(1)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id           String    @id @default(cuid())
+  scenarioId   String
+  name         String
+  type         String    @default("CUSTOM")
+  targetAmount Float
+  targetDate   DateTime?
+  priority     Int       @default(1)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
 
@@ -309,12 +281,16 @@ model Goal {
 
 model ImportLog {
   id           String   @id @default(cuid())
-  householdId  String
+  scenarioId   String
   fileName     String
   rowsImported Int
   status       String
-  errorDetails Json?
+  errorDetails String?  // JSON string
   createdAt    DateTime @default(now())
+
+  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@index([scenarioId])
 }
 
 // ============== ENGINE CACHE ==============
@@ -324,7 +300,7 @@ model EngineResultCache {
   scenarioId    String   @unique
   engineVersion String
   inputHash     String
-  resultsJson   Json
+  resultsJson   String   // JSON string
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

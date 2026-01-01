@@ -2,7 +2,9 @@
 const nextConfig = {
   output: "standalone",
   transpilePackages: ["@finatlas/engine", "@finatlas/schemas"],
-  serverExternalPackages: ["argon2"],
+  experimental: {
+    serverComponentsExternalPackages: ["argon2"],
+  },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

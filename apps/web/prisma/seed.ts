@@ -1,13 +1,4 @@
-import {
-  PrismaClient,
-  UserRole,
-  FilingStatus,
-  Frequency,
-  GrowthRule,
-  AccountType,
-  LoanType,
-  GoalType,
-} from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../lib/auth/password";
 
 const prisma = new PrismaClient();
@@ -24,21 +15,17 @@ async function main() {
     data: {
       email: "demo@local",
       passwordHash,
-      role: UserRole.USER,
+      name: "Demo User",
+      role: "USER",
     },
   });
   console.log("✅ Created demo user:", user.email);
 
-  // Create household with required date fields
-  const startDate = new Date("2024-01-01");
-  const endDate = new Date("2060-12-31");
-
+  // Create household
   const household = await prisma.household.create({
     data: {
       name: "Demo Family",
       ownerUserId: user.id,
-      startDate,
-      endDate,
     },
   });
   console.log("✅ Created household:", household.name);
@@ -48,7 +35,8 @@ async function main() {
     data: {
       householdId: household.id,
       name: "Alex Demo",
-      roleTag: "Primary Earner",
+      birthDate: new Date("1985-06-15"),
+      retirementAge: 65,
     },
   });
 
@@ -56,7 +44,8 @@ async function main() {
     data: {
       householdId: household.id,
       name: "Jordan Demo",
-      roleTag: "Secondary Earner",
+      birthDate: new Date("1987-03-22"),
+      retirementAge: 65,
     },
   });
   console.log("✅ Created household members");
@@ -66,6 +55,7 @@ async function main() {
     data: {
       householdId: household.id,
       name: "Base Case",
+      description: "Current trajectory with moderate assumptions",
       isBaseline: true,
     },
   });
@@ -75,27 +65,64 @@ async function main() {
   await prisma.scenarioAssumption.create({
     data: {
       scenarioId: scenario.id,
-      inflationRatePct: 3.0,
-      taxableInterestYieldPct: 1.5,
-      taxableDividendYieldPct: 1.8,
-      realizedStGainPct: 2.0,
-      realizedLtGainPct: 4.0,
+      projectionYears: 30,
+      inflationRate: 0.025,
+      defaultGrowthRate: 0.07,
+      retirementWithdrawalRate: 0.04,
     },
   });
   console.log("✅ Created scenario assumptions");
 
   // Create tax profile
-  await prisma.taxProfile.create({
+  const taxProfile = await prisma.taxProfile.create({
     data: {
       scenarioId: scenario.id,
-      stateCode: "CA",
-      filingStatus: FilingStatus.MFJ,
-      taxYear: 2024,
-      includePayrollTaxes: true,
-      advancedOverridesEnabled: false,
+      filingStatus: "MFJ",
+      state: "CA",
     },
   });
-  console.log("✅ Created tax profile");
+
+  // Create tax rules
+  await prisma.taxRule.createMany({
+    data: [
+      {
+        taxProfileId: taxProfile.id,
+        jurisdiction: "FEDERAL",
+        bracketStart: 0,
+        bracketEnd: 22000,
+        rate: 0.10,
+      },
+      {
+        taxProfileId: taxProfile.id,
+        jurisdiction: "FEDERAL",
+        bracketStart: 22000,
+        bracketEnd: 89450,
+        rate: 0.12,
+      },
+      {
+        taxProfileId: taxProfile.id,
+        jurisdiction: "FEDERAL",
+        bracketStart: 89450,
+        bracketEnd: 190750,
+        rate: 0.22,
+      },
+      {
+        taxProfileId: taxProfile.id,
+        jurisdiction: "STATE",
+        bracketStart: 0,
+        bracketEnd: 20198,
+        rate: 0.01,
+      },
+      {
+        taxProfileId: taxProfile.id,
+        jurisdiction: "STATE",
+        bracketStart: 20198,
+        bracketEnd: 47884,
+        rate: 0.02,
+      },
+    ],
+  });
+  console.log("✅ Created tax profile and rules");
 
   // Create incomes
   await prisma.income.createMany({
@@ -105,31 +132,34 @@ async function main() {
         memberId: member1.id,
         name: "Software Engineer Salary",
         amount: 150000,
-        frequency: Frequency.ANNUAL,
-        growthRule: GrowthRule.TRACK_INFLATION,
-        growthPct: 2.0,
+        frequency: "ANNUAL",
+        growthRule: "INFLATION_PLUS",
+        growthRate: 0.02,
         startDate: new Date("2024-01-01"),
         endDate: new Date("2050-06-15"),
+        isTaxable: true,
       },
       {
         scenarioId: scenario.id,
         memberId: member2.id,
         name: "Product Manager Salary",
         amount: 130000,
-        frequency: Frequency.ANNUAL,
-        growthRule: GrowthRule.TRACK_INFLATION,
-        growthPct: 2.0,
+        frequency: "ANNUAL",
+        growthRule: "INFLATION_PLUS",
+        growthRate: 0.02,
         startDate: new Date("2024-01-01"),
         endDate: new Date("2052-03-22"),
+        isTaxable: true,
       },
       {
         scenarioId: scenario.id,
         memberId: member1.id,
         name: "Rental Income",
         amount: 2500,
-        frequency: Frequency.MONTHLY,
-        growthRule: GrowthRule.TRACK_INFLATION,
+        frequency: "MONTHLY",
+        growthRule: "INFLATION",
         startDate: new Date("2024-01-01"),
+        isTaxable: true,
       },
     ],
   });
@@ -141,53 +171,53 @@ async function main() {
       {
         scenarioId: scenario.id,
         name: "Mortgage Payment",
-        category: "Housing",
         amount: 3500,
-        frequency: Frequency.MONTHLY,
-        growthRule: GrowthRule.NONE,
+        frequency: "MONTHLY",
+        growthRule: "FIXED",
         startDate: new Date("2024-01-01"),
         endDate: new Date("2044-01-01"),
-        isEssential: true,
+        category: "Housing",
+        isDiscretionary: false,
       },
       {
         scenarioId: scenario.id,
         name: "Property Tax",
-        category: "Housing",
         amount: 12000,
-        frequency: Frequency.ANNUAL,
-        growthRule: GrowthRule.TRACK_INFLATION,
+        frequency: "ANNUAL",
+        growthRule: "INFLATION",
         startDate: new Date("2024-01-01"),
-        isEssential: true,
+        category: "Housing",
+        isDiscretionary: false,
       },
       {
         scenarioId: scenario.id,
         name: "Groceries",
-        category: "Food",
         amount: 1200,
-        frequency: Frequency.MONTHLY,
-        growthRule: GrowthRule.TRACK_INFLATION,
+        frequency: "MONTHLY",
+        growthRule: "INFLATION",
         startDate: new Date("2024-01-01"),
-        isEssential: true,
+        category: "Food",
+        isDiscretionary: false,
       },
       {
         scenarioId: scenario.id,
         name: "Utilities",
-        category: "Housing",
         amount: 400,
-        frequency: Frequency.MONTHLY,
-        growthRule: GrowthRule.TRACK_INFLATION,
+        frequency: "MONTHLY",
+        growthRule: "INFLATION",
         startDate: new Date("2024-01-01"),
-        isEssential: true,
+        category: "Housing",
+        isDiscretionary: false,
       },
       {
         scenarioId: scenario.id,
         name: "Travel & Entertainment",
-        category: "Discretionary",
         amount: 800,
-        frequency: Frequency.MONTHLY,
-        growthRule: GrowthRule.TRACK_INFLATION,
+        frequency: "MONTHLY",
+        growthRule: "INFLATION",
         startDate: new Date("2024-01-01"),
-        isEssential: false,
+        category: "Discretionary",
+        isDiscretionary: true,
       },
     ],
   });
@@ -197,27 +227,36 @@ async function main() {
   const account401k1 = await prisma.account.create({
     data: {
       scenarioId: scenario.id,
+      memberId: member1.id,
       name: "Alex 401(k)",
-      type: AccountType.TRADITIONAL,
-      expectedReturnPct: 7.0,
+      type: "TRADITIONAL_401K",
+      balance: 250000,
+      growthRule: "FIXED",
+      growthRate: 0.07,
     },
   });
 
   const account401k2 = await prisma.account.create({
     data: {
       scenarioId: scenario.id,
+      memberId: member2.id,
       name: "Jordan 401(k)",
-      type: AccountType.TRADITIONAL,
-      expectedReturnPct: 7.0,
+      type: "TRADITIONAL_401K",
+      balance: 180000,
+      growthRule: "FIXED",
+      growthRate: 0.07,
     },
   });
 
   const rothIra = await prisma.account.create({
     data: {
       scenarioId: scenario.id,
+      memberId: member1.id,
       name: "Alex Roth IRA",
-      type: AccountType.ROTH,
-      expectedReturnPct: 7.0,
+      type: "ROTH_IRA",
+      balance: 75000,
+      growthRule: "FIXED",
+      growthRate: 0.07,
     },
   });
 
@@ -225,8 +264,10 @@ async function main() {
     data: {
       scenarioId: scenario.id,
       name: "Joint Brokerage",
-      type: AccountType.TAXABLE,
-      expectedReturnPct: 6.0,
+      type: "BROKERAGE",
+      balance: 150000,
+      growthRule: "FIXED",
+      growthRate: 0.06,
     },
   });
 
@@ -234,8 +275,10 @@ async function main() {
     data: {
       scenarioId: scenario.id,
       name: "Emergency Fund",
-      type: AccountType.TAXABLE,
-      expectedReturnPct: 4.5,
+      type: "SAVINGS",
+      balance: 50000,
+      growthRule: "FIXED",
+      growthRate: 0.045,
     },
   });
   console.log("✅ Created accounts");
@@ -245,33 +288,31 @@ async function main() {
     data: [
       {
         accountId: account401k1.id,
-        ticker: "VTI",
+        symbol: "VTI",
+        name: "Vanguard Total Stock Market ETF",
         shares: 800,
-        avgPrice: 200,
+        costBasis: 160000,
       },
       {
         accountId: account401k1.id,
-        ticker: "VXUS",
+        symbol: "VXUS",
+        name: "Vanguard Total International Stock ETF",
         shares: 500,
-        avgPrice: 60,
+        costBasis: 30000,
       },
       {
         accountId: brokerage.id,
-        ticker: "VOO",
+        symbol: "VOO",
+        name: "Vanguard S&P 500 ETF",
         shares: 200,
-        avgPrice: 400,
+        costBasis: 80000,
       },
       {
         accountId: brokerage.id,
-        ticker: "BND",
+        symbol: "BND",
+        name: "Vanguard Total Bond Market ETF",
         shares: 300,
-        avgPrice: 80,
-      },
-      {
-        accountId: savings.id,
-        ticker: "CASH",
-        shares: 50000,
-        avgPrice: 1,
+        costBasis: 24000,
       },
     ],
   });
@@ -281,25 +322,27 @@ async function main() {
   await prisma.contribution.createMany({
     data: [
       {
-        scenarioId: scenario.id,
         accountId: account401k1.id,
-        amountMonthly: 1916.67, // ~23000/year
+        amount: 23000,
+        frequency: "ANNUAL",
         startDate: new Date("2024-01-01"),
         endDate: new Date("2050-06-15"),
-        escalationPct: 3.0,
+        employerMatch: 0.06,
+        employerMatchLimit: 9000,
       },
       {
-        scenarioId: scenario.id,
         accountId: account401k2.id,
-        amountMonthly: 1916.67, // ~23000/year
+        amount: 23000,
+        frequency: "ANNUAL",
         startDate: new Date("2024-01-01"),
         endDate: new Date("2052-03-22"),
-        escalationPct: 3.0,
+        employerMatch: 0.04,
+        employerMatchLimit: 5200,
       },
       {
-        scenarioId: scenario.id,
         accountId: rothIra.id,
-        amountMonthly: 583.33, // ~7000/year
+        amount: 7000,
+        frequency: "ANNUAL",
         startDate: new Date("2024-01-01"),
         endDate: new Date("2050-06-15"),
       },
@@ -312,22 +355,26 @@ async function main() {
     data: [
       {
         scenarioId: scenario.id,
-        name: "Car Loan",
-        type: LoanType.AUTO,
-        principal: 35000,
-        aprPct: 4.9,
-        termMonths: 60,
-        startDate: new Date("2022-06-01"),
-        paymentOverrideMonthly: 650,
+        name: "Home Mortgage",
+        type: "MORTGAGE",
+        principal: 450000,
+        currentBalance: 380000,
+        interestRate: 0.0375,
+        monthlyPayment: 3500,
+        startDate: new Date("2020-03-01"),
+        termMonths: 360,
       },
       {
         scenarioId: scenario.id,
-        name: "Student Loan",
-        type: LoanType.STUDENT,
-        principal: 25000,
-        aprPct: 5.5,
-        termMonths: 120,
-        startDate: new Date("2020-01-01"),
+        memberId: member2.id,
+        name: "Car Loan",
+        type: "AUTO",
+        principal: 35000,
+        currentBalance: 18000,
+        interestRate: 0.049,
+        monthlyPayment: 650,
+        startDate: new Date("2022-06-01"),
+        termMonths: 60,
       },
     ],
   });
@@ -339,26 +386,33 @@ async function main() {
       {
         scenarioId: scenario.id,
         name: "Retirement",
-        type: GoalType.RETIREMENT,
-        targetAmountReal: 3000000,
+        type: "RETIREMENT",
+        targetAmount: 3000000,
         targetDate: new Date("2050-06-15"),
         priority: 1,
       },
       {
         scenarioId: scenario.id,
         name: "College Fund - Child 1",
-        type: GoalType.COLLEGE,
-        targetAmountReal: 150000,
+        type: "EDUCATION",
+        targetAmount: 150000,
         targetDate: new Date("2038-09-01"),
         priority: 2,
       },
       {
         scenarioId: scenario.id,
         name: "Beach House Down Payment",
-        type: GoalType.HOME_PURCHASE,
-        targetAmountReal: 200000,
+        type: "MAJOR_PURCHASE",
+        targetAmount: 200000,
         targetDate: new Date("2035-01-01"),
         priority: 3,
+      },
+      {
+        scenarioId: scenario.id,
+        name: "Emergency Fund Target",
+        type: "EMERGENCY_FUND",
+        targetAmount: 100000,
+        priority: 1,
       },
     ],
   });
