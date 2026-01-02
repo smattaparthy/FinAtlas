@@ -1,4 +1,4 @@
-Below is the **implementation-grade scaffold** for FinAtlas: monorepo layout, Docker, Prisma (SQLite), seed data (demo accounts + realistic sample household), Zod schemas + TS types, Next.js App Router map, UI component spec, engine contract, and engineering standards.
+Below is the **implementation-grade scaffold** for FinAtlas: Monorepo layout, Docker, Prisma (SQLite), seed data (demo accounts + realistic sample household), Zod schemas + TS types, Next.js App Router map, UI component spec, engine contract, and engineering standards.
 
 Everything is designed for: **local-only**, **containerized on macOS**, **deterministic finance math**, **modern responsive UI**, and **auditable explanations**.
 
