@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const ok = await verifyPassword(user.passwordHash, password);
   if (!ok) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
 
-  const token = await signSession({ id: user.id, email: user.email, role: user.role });
+  const token = await signSession({ id: user.id, email: user.email, role: user.role as "ADMIN" | "USER" });
 
   const res = NextResponse.json({ user: { id: user.id, email: user.email, role: user.role } });
   res.cookies.set(sessionCookieName(), token, {
