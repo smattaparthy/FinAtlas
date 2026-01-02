@@ -12,24 +12,22 @@ type Member = {
 
 type Income = {
   id: string;
-  scenarioId: string;
   name: string;
   amount: number;
-  frequency: string;
+  frequency: "MONTHLY" | "BIWEEKLY" | "WEEKLY" | "ANNUAL" | "ONE_TIME";
   startDate: string;
   endDate: string | null;
-  growthRule: string;
+  growthRule: "NONE" | "FIXED" | "INFLATION" | "INFLATION_PLUS";
   growthRate: number | null;
   memberId: string | null;
   isTaxable: boolean;
-  member: { id: string; name: string } | null;
-  scenario: { id: string; householdId: string };
+  scenarioId: string;
 };
 
 export default function EditIncomePage() {
   const router = useRouter();
   const params = useParams();
-  const incomeId = params.id as string;
+  const id = params.id as string;
 
   const [income, setIncome] = useState<Income | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -40,37 +38,30 @@ export default function EditIncomePage() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
-      setError(null);
-
       try {
         // Fetch income
-        const incomeRes = await fetch(`/api/incomes/${incomeId}`);
+        const incomeRes = await fetch(`/api/incomes/${id}`);
         if (!incomeRes.ok) {
-          if (incomeRes.status === 404) {
-            throw new Error("Income not found");
-          }
           throw new Error("Failed to fetch income");
         }
         const incomeData = await incomeRes.json();
         setIncome(incomeData.income);
 
-        // Fetch members for the household
+        // Fetch members
         const membersRes = await fetch(`/api/members?scenarioId=${incomeData.income.scenarioId}`);
-        if (membersRes.ok) {
-          const membersData = await membersRes.json();
-          setMembers(membersData.members || []);
+        if (!membersRes.ok) {
+          throw new Error("Failed to fetch household members");
         }
+        const membersData = await membersRes.json();
+        setMembers(membersData.members || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load income");
+        setError(err instanceof Error ? err.message : "Failed to load data");
       } finally {
         setLoading(false);
       }
     }
-
-    if (incomeId) {
-      fetchData();
-    }
-  }, [incomeId]);
+    fetchData();
+  }, [id]);
 
   async function handleSubmit(data: {
     name: string;
@@ -85,7 +76,7 @@ export default function EditIncomePage() {
   }) {
     setSaving(true);
     try {
-      const res = await fetch(`/api/incomes/${incomeId}`, {
+      const res = await fetch(`/api/incomes/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -138,7 +129,7 @@ export default function EditIncomePage() {
         </Link>
         <h1 className="text-2xl font-semibold mt-4">Edit Income</h1>
         <p className="text-zinc-400 text-sm mt-1">
-          Update income source: <span className="text-zinc-300">{income.name}</span>
+          Update the details of this income source
         </p>
       </div>
 
@@ -147,18 +138,7 @@ export default function EditIncomePage() {
         <IncomeForm
           scenarioId={income.scenarioId}
           members={members}
-          initialData={{
-            id: income.id,
-            name: income.name,
-            amount: income.amount,
-            frequency: income.frequency as "MONTHLY" | "BIWEEKLY" | "WEEKLY" | "ANNUAL" | "ONE_TIME",
-            startDate: income.startDate,
-            endDate: income.endDate,
-            growthRule: income.growthRule as "NONE" | "FIXED" | "INFLATION" | "INFLATION_PLUS",
-            growthRate: income.growthRate,
-            memberId: income.memberId,
-            isTaxable: income.isTaxable,
-          }}
+          initialData={income}
           onSubmit={handleSubmit}
           onCancel={() => router.push("/incomes")}
           isLoading={saving}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import AccountForm from "@/components/forms/AccountForm";
@@ -10,7 +10,7 @@ type Member = {
   name: string;
 };
 
-type AccountData = {
+type Account = {
   id: string;
   name: string;
   type: "TRADITIONAL_401K" | "ROTH_401K" | "TRADITIONAL_IRA" | "ROTH_IRA" | "BROKERAGE" | "SAVINGS" | "HSA" | "529";
@@ -18,56 +18,49 @@ type AccountData = {
   growthRule: "NONE" | "FIXED" | "INFLATION" | "INFLATION_PLUS";
   growthRate: number | null;
   memberId: string | null;
+  scenarioId: string;
 };
 
-export default function EditAccountPage() {
+export default function EditInvestmentPage() {
   const router = useRouter();
   const params = useParams();
-  const accountId = params.id as string;
+  const id = params.id as string;
 
-  const [account, setAccount] = useState<AccountData | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    async function loadData() {
+    async function fetchData() {
+      setLoading(true);
       try {
         // Fetch account
-        const accountRes = await fetch(`/api/accounts/${accountId}`);
+        const accountRes = await fetch(`/api/accounts/${id}`);
         if (!accountRes.ok) {
-          throw new Error("Failed to fetch account");
+          throw new Error("Failed to fetch investment account");
         }
         const accountData = await accountRes.json();
-        setAccount({
-          id: accountData.account.id,
-          name: accountData.account.name,
-          type: accountData.account.type,
-          balance: accountData.account.balance,
-          growthRule: accountData.account.growthRule,
-          growthRate: accountData.account.growthRate,
-          memberId: accountData.account.memberId,
-        });
+        setAccount(accountData.account);
 
-        // Fetch members from scenarios
-        const scenarioRes = await fetch("/api/scenarios?limit=1");
-        if (scenarioRes.ok) {
-          const scenarioData = await scenarioRes.json();
-          if (scenarioData.scenarios?.[0]?.household?.members) {
-            setMembers(scenarioData.scenarios[0].household.members);
-          }
+        // Fetch members
+        const membersRes = await fetch(`/api/members?scenarioId=${accountData.account.scenarioId}`);
+        if (!membersRes.ok) {
+          throw new Error("Failed to fetch household members");
         }
+        const membersData = await membersRes.json();
+        setMembers(membersData.members || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load account");
+        setError(err instanceof Error ? err.message : "Failed to load data");
       } finally {
         setLoading(false);
       }
     }
-    loadData();
-  }, [accountId]);
+    fetchData();
+  }, [id]);
 
-  async function handleSubmit(formData: {
+  async function handleSubmit(data: {
     name: string;
     type: string;
     balance: number;
@@ -75,22 +68,23 @@ export default function EditAccountPage() {
     growthRate: number | null;
     memberId: string | null;
   }) {
-    setSubmitting(true);
+    setSaving(true);
     try {
-      const res = await fetch(`/api/accounts/${accountId}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/accounts/${id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(data),
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to update account");
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to update investment account");
       }
 
       router.push("/investments");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setSaving(false);
+      throw err;
     }
   }
 
@@ -105,8 +99,11 @@ export default function EditAccountPage() {
   if (error || !account) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="text-red-400">{error || "Account not found"}</div>
-        <Link href="/investments" className="text-sm text-zinc-400 hover:text-zinc-50">
+        <div className="text-red-400">{error || "Investment account not found"}</div>
+        <Link
+          href="/investments"
+          className="text-sm text-zinc-400 hover:text-zinc-50 transition-colors"
+        >
           Back to Investments
         </Link>
       </div>
@@ -114,26 +111,40 @@ export default function EditAccountPage() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto">
+      {/* Header */}
       <div className="mb-6">
         <Link
           href="/investments"
-          className="text-sm text-zinc-400 hover:text-zinc-50 transition-colors"
+          className="text-sm text-zinc-400 hover:text-zinc-50 transition-colors flex items-center gap-1"
         >
-          &larr; Back to Investments
+          <ChevronLeftIcon className="w-4 h-4" />
+          Back to Investments
         </Link>
+        <h1 className="text-2xl font-semibold mt-4">Edit Investment Account</h1>
+        <p className="text-zinc-400 text-sm mt-1">
+          Update the details of this investment account
+        </p>
       </div>
 
+      {/* Form Card */}
       <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6">
-        <h1 className="text-xl font-semibold mb-6">Edit Account</h1>
         <AccountForm
           members={members}
           initialData={account}
           onSubmit={handleSubmit}
           onCancel={() => router.push("/investments")}
-          isLoading={submitting}
+          isLoading={saving}
         />
       </div>
     </div>
+  );
+}
+
+function ChevronLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+    </svg>
   );
 }
