@@ -17,7 +17,7 @@ export default function SavingsRateChart({
   height = 300,
 }: SavingsRateChartProps) {
   const chartData = useMemo(() => {
-    if (incomeSeries.length === 0 || expenseSeries.length === 0 || taxesSeries.length === 0) return null;
+    if (!incomeSeries || incomeSeries.length === 0 || !expenseSeries || expenseSeries.length === 0 || !taxesSeries || taxesSeries.length === 0) return null;
 
     // Calculate savings rate for each month
     const savingsRateData: { date: string; rate: number }[] = [];

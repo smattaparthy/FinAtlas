@@ -23,7 +23,7 @@ function formatCurrency(amount: number): string {
 
 export default function CashBalanceChart({ series, height = 300 }: CashBalanceChartProps) {
   const chartData = useMemo(() => {
-    if (series.length === 0) return null;
+    if (!series || series.length === 0) return null;
 
     // Calculate cumulative cash balance from cashflow
     const cumulativeData: { date: string; balance: number }[] = [];

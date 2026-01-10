@@ -25,7 +25,7 @@ export default function IncomeExpensesChart({
   height = 300,
 }: IncomeExpensesChartProps) {
   const chartData = useMemo(() => {
-    if (incomeSeries.length === 0 || expenseSeries.length === 0) return null;
+    if (!incomeSeries || incomeSeries.length === 0 || !expenseSeries || expenseSeries.length === 0) return null;
 
     // Sample every Nth point to avoid overcrowding
     const sampleRate = Math.max(1, Math.floor(incomeSeries.length / 50));

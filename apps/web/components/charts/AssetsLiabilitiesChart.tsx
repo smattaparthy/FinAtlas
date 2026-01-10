@@ -25,7 +25,7 @@ export default function AssetsLiabilitiesChart({
   height = 300,
 }: AssetsLiabilitiesChartProps) {
   const chartData = useMemo(() => {
-    if (assetsSeries.length === 0 || liabilitiesSeries.length === 0) return null;
+    if (!assetsSeries || assetsSeries.length === 0 || !liabilitiesSeries || liabilitiesSeries.length === 0) return null;
 
     const allValues = [...assetsSeries.map((d) => d.v), ...liabilitiesSeries.map((d) => d.v)];
     const minValue = Math.min(...allValues, 0);

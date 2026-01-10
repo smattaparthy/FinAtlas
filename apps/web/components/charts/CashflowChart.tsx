@@ -23,7 +23,7 @@ function formatCurrency(amount: number): string {
 
 export default function CashflowChart({ series, height = 300 }: CashflowChartProps) {
   const chartData = useMemo(() => {
-    if (series.length === 0) return null;
+    if (!series || series.length === 0) return null;
 
     const values = series.map((d) => d.v);
     const minValue = Math.min(...values, 0);
