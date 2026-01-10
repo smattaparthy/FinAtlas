@@ -34,3 +34,6 @@ coverage/
 
 # Turbo
 .turbo/
+
+# Web
+apps/web/.env
