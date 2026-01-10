@@ -8,8 +8,8 @@ interface ProjectionChartProps {
 }
 
 interface ProjectionData {
-  year: number;
-  value: number;
+  t: string;
+  v: number;
 }
 
 export default function ProjectionChart({ scenarioId }: ProjectionChartProps) {
@@ -67,15 +67,17 @@ export default function ProjectionChart({ scenarioId }: ProjectionChartProps) {
         const growthRate = 0.06; // 6% investment growth
 
         // Project 10 years
-        const currentYear = new Date().getFullYear();
+        const currentDate = new Date();
         const projectionYears = 10;
         const projection: ProjectionData[] = [];
 
         let netWorth = initialNetWorth;
         for (let i = 0; i <= projectionYears; i++) {
+          const projectionDate = new Date(currentDate);
+          projectionDate.setFullYear(currentDate.getFullYear() + i);
           projection.push({
-            year: currentYear + i,
-            value: Math.round(netWorth),
+            t: projectionDate.toISOString(),
+            v: Math.round(netWorth),
           });
           // Apply growth and add savings
           netWorth = netWorth * (1 + growthRate) + netAnnualSavings;
@@ -135,7 +137,7 @@ export default function ProjectionChart({ scenarioId }: ProjectionChartProps) {
           </div>
         </div>
       </div>
-      <NetWorthChart data={data} height={200} />
+      <NetWorthChart series={data} height={200} />
     </div>
   );
 }

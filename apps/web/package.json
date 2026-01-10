@@ -13,18 +13,19 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ant-design/charts": "^2.2.1",
+    "@anthropic-ai/sdk": "^0.71.2",
+    "@finatlas/engine": "workspace:*",
+    "@finatlas/schemas": "workspace:*",
+    "@prisma/client": "^6.2.1",
+    "argon2": "^0.41.1",
+    "clsx": "^2.1.1",
+    "jose": "^5.9.6",
     "next": "^14.2.21",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@prisma/client": "^6.2.1",
-    "jose": "^5.9.6",
-    "argon2": "^0.41.1",
-    "zod": "^3.24.1",
-    "@ant-design/charts": "^2.2.1",
-    "clsx": "^2.1.1",
     "tailwind-merge": "^3.4.0",
-    "@finatlas/engine": "workspace:*",
-    "@finatlas/schemas": "workspace:*"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
@@ -32,9 +33,9 @@
     "@types/react-dom": "^18.3.5",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.2",
     "prisma": "^6.2.1",
-    "tsx": "^4.19.2"
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
   }
 }
