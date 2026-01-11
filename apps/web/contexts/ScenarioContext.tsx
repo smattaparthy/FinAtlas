@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useHousehold } from "./HouseholdContext";
 
 export type Scenario = {
   id: string;
@@ -22,9 +23,12 @@ type ScenarioContextType = {
 
 const ScenarioContext = createContext<ScenarioContextType | null>(null);
 
+const SCENARIO_STORAGE_KEY = "finatlas_selected_scenario";
+
 export function ScenarioProvider({ children }: { children: ReactNode }) {
-  const [scenarios, setScenarios] = useState<Scenario[]>([]);
-  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
+  const { selectedHouseholdId } = useHousehold();
+  const [allScenarios, setAllScenarios] = useState<Scenario[]>([]);
+  const [selectedScenarioId, setSelectedScenarioIdState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,13 +41,7 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
         throw new Error("Failed to fetch scenarios");
       }
       const data = await res.json();
-      setScenarios(data.scenarios || []);
-
-      // Auto-select baseline scenario or first scenario
-      if (data.scenarios?.length > 0 && !selectedScenarioId) {
-        const baseline = data.scenarios.find((s: Scenario) => s.isBaseline);
-        setSelectedScenarioId(baseline?.id || data.scenarios[0].id);
-      }
+      setAllScenarios(data.scenarios || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -53,8 +51,41 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchScenarios();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Filter scenarios by selected household
+  const scenarios = selectedHouseholdId
+    ? allScenarios.filter((s) => s.householdId === selectedHouseholdId)
+    : [];
+
+  // Auto-select scenario when household changes
+  useEffect(() => {
+    if (scenarios.length === 0) {
+      setSelectedScenarioIdState(null);
+      return;
+    }
+
+    // Try to restore from localStorage for this household
+    const storedId = localStorage.getItem(`${SCENARIO_STORAGE_KEY}_${selectedHouseholdId}`);
+    if (storedId && scenarios.find((s) => s.id === storedId)) {
+      setSelectedScenarioIdState(storedId);
+    } else {
+      // Auto-select baseline scenario or first scenario
+      const baseline = scenarios.find((s) => s.isBaseline);
+      const newId = baseline?.id || scenarios[0].id;
+      setSelectedScenarioIdState(newId);
+      if (selectedHouseholdId) {
+        localStorage.setItem(`${SCENARIO_STORAGE_KEY}_${selectedHouseholdId}`, newId);
+      }
+    }
+  }, [selectedHouseholdId, scenarios.length, scenarios]);
+
+  const setSelectedScenarioId = (id: string | null) => {
+    setSelectedScenarioIdState(id);
+    if (id && selectedHouseholdId) {
+      localStorage.setItem(`${SCENARIO_STORAGE_KEY}_${selectedHouseholdId}`, id);
+    }
+  };
 
   const selectedScenario = scenarios.find((s) => s.id === selectedScenarioId) || null;
 
