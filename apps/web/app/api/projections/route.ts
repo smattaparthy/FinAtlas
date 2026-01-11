@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
       .filter((expense) => expense.startDate !== null)
       .map((expense) => ({
         id: expense.id,
-        category: expense.category,
+        category: expense.category || "Uncategorized",
         name: expense.name,
         amount: expense.amount,
         frequency: expense.frequency as "MONTHLY" | "BIWEEKLY" | "WEEKLY" | "ANNUAL" | "ONE_TIME",
@@ -111,11 +111,11 @@ export async function GET(req: NextRequest) {
       type: "TAXABLE" as const, // Simplified for now
       expectedReturnPct: 7.0, // Default 7% return
       holdings: account.holdings.map((holding) => ({
-        ticker: holding.ticker,
+        ticker: holding.symbol,
         shares: holding.shares,
-        avgPrice: holding.avgPrice,
-        lastPrice: holding.lastPrice ?? undefined,
-        asOfDate: holding.asOfDate ? holding.asOfDate.toISOString().split("T")[0] : undefined,
+        avgPrice: holding.costBasis ?? 0,
+        lastPrice: undefined,
+        asOfDate: undefined,
       })),
     })),
     contributions: [], // No contributions for now
@@ -139,7 +139,7 @@ export async function GET(req: NextRequest) {
         type: "RETIREMENT" as const, // Simplified for now
         name: goal.name,
         targetAmountReal: goal.targetAmount,
-        targetDate: goal.targetDate.toISOString().split("T")[0],
+        targetDate: goal.targetDate!.toISOString().split("T")[0],
         priority: 2,
       })),
   };

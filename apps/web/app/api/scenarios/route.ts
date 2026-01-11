@@ -10,11 +10,60 @@ export async function GET() {
   }
 
   try {
+    // Verify user exists in database first
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+    });
+
+    if (!dbUser) {
+      console.error("User from session not found in database:", user.id);
+      return NextResponse.json(
+        { error: "User account not found. Please log out and log in again." },
+        { status: 400 }
+      );
+    }
+
     // Get all households for the user
-    const households = await prisma.household.findMany({
+    let households = await prisma.household.findMany({
       where: { ownerUserId: user.id },
       select: { id: true },
     });
+
+    // Auto-create household if user has none
+    if (households.length === 0) {
+      const newHousehold = await prisma.household.create({
+        data: {
+          name: "My Household",
+          ownerUserId: user.id,
+        },
+      });
+
+      // Create default baseline scenario
+      await prisma.scenario.create({
+        data: {
+          householdId: newHousehold.id,
+          name: "Baseline",
+          description: "Your baseline financial scenario",
+          isBaseline: true,
+        },
+      });
+
+      // Create scenario assumptions
+      await prisma.scenarioAssumption.create({
+        data: {
+          scenarioId: (await prisma.scenario.findFirst({
+            where: { householdId: newHousehold.id },
+            select: { id: true },
+          }))!.id,
+          projectionYears: 30,
+          inflationRate: 0.025,
+          defaultGrowthRate: 0.07,
+          retirementWithdrawalRate: 0.04,
+        },
+      });
+
+      households = [{ id: newHousehold.id }];
+    }
 
     const householdIds = households.map((h) => h.id);
 

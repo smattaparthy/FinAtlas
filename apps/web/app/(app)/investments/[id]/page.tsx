@@ -65,11 +65,12 @@ function formatCurrency(amount: number): string {
 }
 
 function formatPercent(rate: number): string {
+  // rate comes in as decimal (0.07 = 7%), Intl.NumberFormat handles the conversion
   return new Intl.NumberFormat("en-US", {
     style: "percent",
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
-  }).format(rate / 100);
+  }).format(rate);
 }
 
 export default function AccountDetailPage() {

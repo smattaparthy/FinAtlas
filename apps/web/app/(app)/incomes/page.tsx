@@ -301,7 +301,7 @@ export default function IncomesPage() {
                   <td className="px-4 py-3 text-zinc-400 hidden xl:table-cell">
                     {GROWTH_RULE_LABELS[income.growthRule] || income.growthRule}
                     {income.growthRate && income.growthRule !== "NONE" && (
-                      <span className="text-zinc-500"> @ {income.growthRate}%</span>
+                      <span className="text-zinc-500"> @ {(income.growthRate * 100).toFixed(1)}%</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">

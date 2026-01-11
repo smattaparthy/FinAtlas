@@ -79,7 +79,10 @@ export function ExpenseForm({ scenarioId, initialData, mode }: ExpenseFormProps)
     startDate: initialData?.startDate ?? new Date().toISOString().split("T")[0],
     endDate: initialData?.endDate ?? null,
     growthRule: (initialData?.growthRule as ExpenseFormData["growthRule"]) ?? "INFLATION",
-    growthRate: initialData?.growthRate ?? null,
+    // Convert decimal to percentage for display
+    growthRate: initialData?.growthRate !== null && initialData?.growthRate !== undefined
+      ? initialData.growthRate * 100
+      : null,
     category: initialData?.category ?? null,
     isDiscretionary: initialData?.isDiscretionary ?? false,
   });
@@ -105,8 +108,12 @@ export function ExpenseForm({ scenarioId, initialData, mode }: ExpenseFormProps)
     const url = mode === "create" ? "/api/expenses" : `/api/expenses/${initialData?.id}`;
     const method = mode === "create" ? "POST" : "PUT";
 
+    // Convert percentage back to decimal for database storage
     const payload = {
       ...formData,
+      growthRate: formData.growthRate !== null && formData.growthRate !== undefined
+        ? formData.growthRate / 100
+        : null,
       ...(mode === "create" && { scenarioId }),
     };
 

@@ -14,6 +14,20 @@ type Loan = {
   startDate: string;
   termMonths: number;
   member: { id: string; name: string } | null;
+
+  // Mortgage-specific fields
+  propertyAddress?: string;
+  propertyZipCode?: string;
+  propertyCity?: string;
+  propertyState?: string;
+  propertyCounty?: string;
+  propertyValue?: number;
+  annualPropertyTax?: number;
+  annualHomeInsurance?: number;
+  monthlyHOAFees?: number;
+  monthlyPMI?: number;
+  insuranceProvider?: string;
+  hoaName?: string;
 };
 
 type AmortizationRow = {
@@ -53,11 +67,12 @@ function formatCurrency(amount: number): string {
 }
 
 function formatPercent(rate: number): string {
+  // rate comes in as decimal (0.065 = 6.5%), Intl.NumberFormat handles the conversion
   return new Intl.NumberFormat("en-US", {
     style: "percent",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(rate / 100);
+  }).format(rate);
 }
 
 function formatDate(dateStr: string): string {
@@ -371,6 +386,109 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
       </div>
+
+      {/* Mortgage-Specific Information */}
+      {loan.type === "MORTGAGE" && loan.propertyAddress && (
+        <>
+          {/* Property Information */}
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6">
+            <h2 className="font-semibold mb-4">Property Information</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="col-span-2">
+                <div className="text-xs text-zinc-400">Property Address</div>
+                <div className="font-medium">
+                  {loan.propertyAddress}
+                  {loan.propertyCity && loan.propertyState && (
+                    <div className="text-sm text-zinc-500 mt-1">
+                      {loan.propertyCity}, {loan.propertyState} {loan.propertyZipCode}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {loan.propertyCounty && (
+                <div>
+                  <div className="text-xs text-zinc-400">County</div>
+                  <div className="font-medium">{loan.propertyCounty}</div>
+                </div>
+              )}
+              {loan.propertyValue && (
+                <div>
+                  <div className="text-xs text-zinc-400">Property Value</div>
+                  <div className="font-medium">{formatCurrency(loan.propertyValue)}</div>
+                </div>
+              )}
+              {loan.propertyValue && loan.principal && (
+                <div>
+                  <div className="text-xs text-zinc-400">Down Payment</div>
+                  <div className="font-medium">
+                    {formatCurrency(loan.propertyValue - loan.principal)}
+                    <span className="text-xs text-zinc-500 ml-1">
+                      ({(((loan.propertyValue - loan.principal) / loan.propertyValue) * 100).toFixed(1)}%)
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Monthly Housing Costs Breakdown */}
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6">
+            <h2 className="font-semibold mb-4">Monthly Housing Costs</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-zinc-400">Principal & Interest</span>
+                <span className="font-medium">{formatCurrency(loan.monthlyPayment)}</span>
+              </div>
+              {loan.annualPropertyTax && loan.annualPropertyTax > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400">Property Tax</span>
+                  <span className="font-medium">{formatCurrency(loan.annualPropertyTax / 12)}</span>
+                </div>
+              )}
+              {loan.annualHomeInsurance && loan.annualHomeInsurance > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400">
+                    Homeowners Insurance
+                    {loan.insuranceProvider && (
+                      <span className="text-xs text-zinc-500 ml-1">({loan.insuranceProvider})</span>
+                    )}
+                  </span>
+                  <span className="font-medium">{formatCurrency(loan.annualHomeInsurance / 12)}</span>
+                </div>
+              )}
+              {loan.monthlyHOAFees && loan.monthlyHOAFees > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400">
+                    HOA Fees
+                    {loan.hoaName && (
+                      <span className="text-xs text-zinc-500 ml-1">({loan.hoaName})</span>
+                    )}
+                  </span>
+                  <span className="font-medium">{formatCurrency(loan.monthlyHOAFees)}</span>
+                </div>
+              )}
+              {loan.monthlyPMI && loan.monthlyPMI > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400">PMI</span>
+                  <span className="font-medium">{formatCurrency(loan.monthlyPMI)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-3 border-t border-zinc-800">
+                <span className="font-semibold text-lg">Total Monthly Cost</span>
+                <span className="font-semibold text-lg">
+                  {formatCurrency(
+                    loan.monthlyPayment +
+                    (loan.annualPropertyTax || 0) / 12 +
+                    (loan.annualHomeInsurance || 0) / 12 +
+                    (loan.monthlyHOAFees || 0) +
+                    (loan.monthlyPMI || 0)
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Amortization Schedule */}
       <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6">

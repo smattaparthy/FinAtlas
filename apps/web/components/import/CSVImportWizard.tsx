@@ -65,6 +65,19 @@ const IMPORT_CONFIGS: Record<ImportType, { fields: ImportField[]; patterns: { fi
       { field: "termMonths", label: "Term (months)", required: true, parser: parseAmount },
       { field: "monthlyPayment", label: "Monthly Payment", required: false, parser: parseAmount },
       { field: "startDate", label: "Start Date", required: false, parser: parseDate },
+      // Mortgage-specific fields
+      { field: "propertyAddress", label: "Property Address", required: false },
+      { field: "propertyZipCode", label: "ZIP Code", required: false },
+      { field: "propertyCity", label: "City", required: false },
+      { field: "propertyState", label: "State", required: false },
+      { field: "propertyCounty", label: "County", required: false },
+      { field: "propertyValue", label: "Property Value", required: false, parser: parseAmount },
+      { field: "annualPropertyTax", label: "Annual Property Tax", required: false, parser: parseAmount },
+      { field: "annualHomeInsurance", label: "Annual Home Insurance", required: false, parser: parseAmount },
+      { field: "monthlyHOAFees", label: "Monthly HOA Fees", required: false, parser: parseAmount },
+      { field: "monthlyPMI", label: "Monthly PMI", required: false, parser: parseAmount },
+      { field: "insuranceProvider", label: "Insurance Provider", required: false },
+      { field: "hoaName", label: "HOA Name", required: false },
     ],
   },
 };
@@ -180,6 +193,10 @@ export default function CSVImportWizard({
           frequency: row.frequency || "MONTHLY",
           growthRule: "NONE",
           startDate: row.startDate || new Date().toISOString().split("T")[0],
+          // Convert interest rate from percentage to decimal for loans
+          ...(type === "loan" && row.interestRate !== undefined && row.interestRate !== null
+            ? { interestRate: (row.interestRate as number) / 100 }
+            : {}),
         };
 
         const res = await fetch(endpoint, {

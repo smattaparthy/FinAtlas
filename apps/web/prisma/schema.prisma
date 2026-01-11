@@ -253,6 +253,21 @@ model Loan {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  // Mortgage-specific fields (nullable for other loan types)
+  propertyAddress       String?
+  propertyZipCode       String?
+  propertyCity          String?
+  propertyState         String?
+  propertyCounty        String?
+  propertyValue         Float?
+  annualPropertyTax     Float?
+  annualHomeInsurance   Float?
+  monthlyHOAFees        Float?
+  monthlyPMI            Float?
+  pmiRequired           Boolean   @default(false)
+  insuranceProvider     String?
+  hoaName               String?
+
   scenario Scenario         @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
   member   HouseholdMember? @relation(fields: [memberId], references: [id], onDelete: SetNull)
 

@@ -190,6 +190,19 @@ export const LOAN_FIELD_PATTERNS = [
   { field: "termMonths", patterns: ["term", "months", "duration", "period"] },
   { field: "monthlyPayment", patterns: ["payment", "monthly", "installment"] },
   { field: "startDate", patterns: ["start", "date", "origination", "begin"] },
+  // Mortgage-specific fields
+  { field: "propertyAddress", patterns: ["property address", "address", "property location", "home address"] },
+  { field: "propertyZipCode", patterns: ["zip", "zipcode", "zip code", "postal", "postal code"] },
+  { field: "propertyCity", patterns: ["city", "property city", "municipality"] },
+  { field: "propertyState", patterns: ["state", "property state", "province"] },
+  { field: "propertyCounty", patterns: ["county", "property county", "district"] },
+  { field: "propertyValue", patterns: ["property value", "home value", "appraised value", "market value", "purchase price"] },
+  { field: "annualPropertyTax", patterns: ["property tax", "annual tax", "real estate tax", "taxes"] },
+  { field: "annualHomeInsurance", patterns: ["home insurance", "homeowners insurance", "property insurance", "insurance"] },
+  { field: "monthlyHOAFees", patterns: ["hoa", "hoa fees", "association fees", "condo fees", "homeowners association"] },
+  { field: "monthlyPMI", patterns: ["pmi", "mortgage insurance", "private mortgage insurance"] },
+  { field: "insuranceProvider", patterns: ["insurance provider", "insurance company", "insurer"] },
+  { field: "hoaName", patterns: ["hoa name", "association name", "hoa"] },
 ];
 
 /**

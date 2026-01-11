@@ -116,8 +116,8 @@ export default function ProjectionChart({ scenarioId }: ProjectionChartProps) {
     );
   }
 
-  const startValue = data[0]?.value ?? 0;
-  const endValue = data[data.length - 1]?.value ?? 0;
+  const startValue = data[0]?.v ?? 0;
+  const endValue = data[data.length - 1]?.v ?? 0;
   const growth = endValue - startValue;
   const growthPct = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
 

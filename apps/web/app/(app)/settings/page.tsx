@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { AnthropicKeyManager } from "@/components/settings/AnthropicKeyManager";
+import { HouseholdManager } from "@/components/settings/HouseholdManager";
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
@@ -23,7 +24,25 @@ export default async function SettingsPage() {
   const households = await prisma.household.findMany({
     where: { ownerUserId: user.id },
     include: {
-      scenarios: true,
+      scenarios: {
+        select: {
+          id: true,
+          name: true,
+          isBaseline: true,
+        },
+      },
+      members: {
+        select: {
+          id: true,
+          name: true,
+          roleTag: true,
+        },
+      },
+      _count: {
+        select: {
+          members: true,
+        },
+      },
     },
   });
 
@@ -67,49 +86,17 @@ export default async function SettingsPage() {
       <AnthropicKeyManager />
 
       {/* Household Information */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
-        <div className="p-6 border-b border-zinc-800">
-          <h2 className="text-lg font-medium">Household Information</h2>
-          <p className="text-sm text-zinc-400 mt-1">Your financial planning households</p>
-        </div>
-        <div className="p-6">
-          {households.length > 0 ? (
-            <div className="space-y-4">
-              {households.map((household) => (
-                <div key={household.id} className="border border-zinc-800 rounded-xl p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium text-zinc-100">{household.name}</p>
-                      {household.description && (
-                        <p className="text-sm text-zinc-400 mt-1">{household.description}</p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-zinc-500">Scenarios</p>
-                      <p className="text-lg font-semibold text-zinc-100">{household.scenarios.length}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-zinc-800 flex gap-4 text-xs text-zinc-500">
-                    <div>
-                      <span className="text-zinc-400">Created:</span>{' '}
-                      {household.createdAt.toLocaleDateString('en-US')}
-                    </div>
-                    <div>
-                      <span className="text-zinc-400">Updated:</span>{' '}
-                      {household.updatedAt.toLocaleDateString('en-US')}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-zinc-500">
-              <p>No households created yet</p>
-              <p className="text-sm mt-1">Create a household to start your financial planning</p>
-            </div>
-          )}
-        </div>
-      </div>
+      <HouseholdManager
+        initialHouseholds={households.map((h) => ({
+          id: h.id,
+          name: h.name,
+          createdAt: h.createdAt.toISOString(),
+          updatedAt: h.updatedAt.toISOString(),
+          scenarios: h.scenarios,
+          members: h.members,
+          _count: h._count,
+        }))}
+      />
 
       {/* Preferences Section (placeholder) */}
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">

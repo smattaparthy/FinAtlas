@@ -57,7 +57,10 @@ export default function AccountForm({
     type: initialData?.type ?? "BROKERAGE",
     balance: initialData?.balance ?? 0,
     growthRule: initialData?.growthRule ?? "FIXED",
-    growthRate: initialData?.growthRate ?? 7,
+    // Convert decimal (0.07) to percentage (7) for display
+    growthRate: initialData?.growthRate !== null && initialData?.growthRate !== undefined
+      ? initialData.growthRate * 100
+      : 7,
     memberId: initialData?.memberId ?? null,
   });
 
@@ -105,7 +108,14 @@ export default function AccountForm({
     }
 
     try {
-      await onSubmit(parsed.data);
+      // Convert percentage (7) back to decimal (0.07) for database storage
+      const dataToSubmit = {
+        ...parsed.data,
+        growthRate: parsed.data.growthRate !== null
+          ? parsed.data.growthRate / 100
+          : null,
+      };
+      await onSubmit(dataToSubmit);
     } catch (err) {
       setServerError(err instanceof Error ? err.message : "An error occurred");
     }

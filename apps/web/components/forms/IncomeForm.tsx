@@ -67,7 +67,10 @@ export default function IncomeForm({
     startDate: formatDateForInput(initialData?.startDate) || new Date().toISOString().split("T")[0],
     endDate: formatDateForInput(initialData?.endDate) || null,
     growthRule: initialData?.growthRule ?? "NONE",
-    growthRate: initialData?.growthRate ?? null,
+    // Convert decimal (0.02) to percentage (2) for display
+    growthRate: initialData?.growthRate !== null && initialData?.growthRate !== undefined
+      ? initialData.growthRate * 100
+      : null,
     memberId: initialData?.memberId ?? null,
     isTaxable: initialData?.isTaxable ?? true,
   });
@@ -117,7 +120,14 @@ export default function IncomeForm({
     }
 
     try {
-      await onSubmit(parsed.data);
+      // Convert percentage (2) back to decimal (0.02) for database storage
+      const dataToSubmit = {
+        ...parsed.data,
+        growthRate: parsed.data.growthRate !== null
+          ? parsed.data.growthRate / 100
+          : null,
+      };
+      await onSubmit(dataToSubmit);
     } catch (err) {
       setServerError(err instanceof Error ? err.message : "An error occurred");
     }

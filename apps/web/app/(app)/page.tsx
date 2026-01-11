@@ -75,7 +75,7 @@ async function getDashboardData(userId: string) {
   const scenarioId = baselineScenario.id;
 
   // Get summary data in parallel
-  const [incomes, expenses, accounts, goals] = await Promise.all([
+  const [incomes, expenses, accounts, loans, goals] = await Promise.all([
     prisma.income.findMany({
       where: { scenarioId },
       select: { amount: true, frequency: true },
@@ -88,9 +88,19 @@ async function getDashboardData(userId: string) {
       where: { scenarioId },
       select: { balance: true },
     }),
+    prisma.loan.findMany({
+      where: { scenarioId },
+      select: {
+        principal: true,
+        currentBalance: true,
+        interestRate: true,
+        termMonths: true,
+        startDate: true,
+      },
+    }),
     prisma.goal.findMany({
       where: { scenarioId },
-      select: { targetAmount: true },
+      select: { targetAmount: true, targetDate: true },
     }),
   ]);
 
@@ -115,8 +125,33 @@ async function getDashboardData(userId: string) {
 
   const netWorth = accounts.reduce((sum, a) => sum + a.balance, 0);
 
-  const totalGoalsTarget = goals.reduce((sum, g) => sum + g.targetAmount, 0);
-  const goalsProgress = totalGoalsTarget > 0 ? Math.min((netWorth / totalGoalsTarget) * 100, 100) : 0;
+  // Calculate loan payments
+  const annualLoanPayments = loans.reduce((sum, loan) => {
+    if (!loan.principal || !loan.termMonths) return sum;
+
+    const monthlyRate = (loan.interestRate || 0) / 12;
+    const numPayments = loan.termMonths;
+
+    let monthlyPayment = 0;
+    if (monthlyRate === 0) {
+      monthlyPayment = loan.principal / numPayments;
+    } else {
+      monthlyPayment =
+        (loan.principal * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) /
+        (Math.pow(1 + monthlyRate, numPayments) - 1);
+    }
+
+    return sum + (isNaN(monthlyPayment) ? 0 : monthlyPayment * 12);
+  }, 0);
+
+  // Calculate goals progress based on projected net worth at goal dates
+  const goalsProgress = calculateGoalsProgress({
+    currentNetWorth: netWorth,
+    annualIncome: totalAnnualIncome,
+    annualExpenses: totalAnnualExpenses,
+    annualLoanPayments,
+    goals,
+  });
 
   return {
     scenarioId,
@@ -126,6 +161,52 @@ async function getDashboardData(userId: string) {
     goalsProgress,
     goalsCount: goals.length,
   };
+}
+
+function calculateGoalsProgress({
+  currentNetWorth,
+  annualIncome,
+  annualExpenses,
+  annualLoanPayments,
+  goals,
+}: {
+  currentNetWorth: number;
+  annualIncome: number;
+  annualExpenses: number;
+  annualLoanPayments: number;
+  goals: Array<{ targetAmount: number; targetDate: Date | null }>;
+}): number {
+  if (goals.length === 0) return 0;
+
+  const annualSavings = annualIncome - annualExpenses - annualLoanPayments;
+  const estimatedTaxRate = 0.25;
+  const netAnnualSavings = annualSavings * (1 - estimatedTaxRate);
+  const growthRate = 0.06; // 6% average growth rate
+
+  // Calculate progress for each goal
+  const goalProgresses = goals.map((goal) => {
+    if (!goal.targetDate) {
+      // No target date - use current net worth vs target
+      return Math.min((currentNetWorth / goal.targetAmount) * 100, 100);
+    }
+
+    // Calculate projected net worth at goal's target date
+    const yearsToGoal = Math.max(
+      0,
+      (goal.targetDate.getTime() - Date.now()) / (365.25 * 24 * 60 * 60 * 1000)
+    );
+
+    let projectedNetWorth = currentNetWorth;
+    for (let i = 0; i < yearsToGoal; i++) {
+      projectedNetWorth = projectedNetWorth * (1 + growthRate) + netAnnualSavings;
+    }
+
+    // Calculate progress as percentage toward goal
+    return Math.min((projectedNetWorth / goal.targetAmount) * 100, 100);
+  });
+
+  // Return average progress across all goals
+  return goalProgresses.reduce((sum, p) => sum + p, 0) / goalProgresses.length;
 }
 
 export default async function DashboardPage() {

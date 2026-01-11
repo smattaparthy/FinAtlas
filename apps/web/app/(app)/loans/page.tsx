@@ -45,11 +45,12 @@ function formatCurrency(amount: number): string {
 }
 
 function formatPercent(rate: number): string {
+  // rate comes in as decimal (0.045 = 4.5%), Intl.NumberFormat handles the conversion
   return new Intl.NumberFormat("en-US", {
     style: "percent",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(rate / 100);
+  }).format(rate);
 }
 
 function PayoffProgressBar({ principal, currentBalance }: { principal: number; currentBalance: number }) {

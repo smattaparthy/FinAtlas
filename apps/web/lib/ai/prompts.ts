@@ -42,6 +42,8 @@ When the user asks a what-if question, respond with:
 3. Ask for confirmation before applying
 
 The JSON should follow this structure:
+
+For dollar amount changes:
 \`\`\`json
 {
   "type": "INCOME_CHANGE",
@@ -51,6 +53,19 @@ The JSON should follow this structure:
     "startDate": "2026-01-01"
   },
   "description": "Increase Salary by $20,000/year starting January 2026"
+}
+\`\`\`
+
+For percentage changes:
+\`\`\`json
+{
+  "type": "INCOME_CHANGE",
+  "targetIncomeName": "Salary",
+  "changes": {
+    "amountMultiplier": 1.5,
+    "startDate": "2027-01-01"
+  },
+  "description": "Increase Salary by 50% (to $187,500/year) starting January 2027"
 }
 \`\`\`
 

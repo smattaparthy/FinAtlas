@@ -12,20 +12,22 @@ export default function ProjectionPanel() {
 
   useEffect(() => {
     async function calculateProjections() {
-      if (!state.baselineData || !state.modifiedData) return;
+      if (!state.baselineData) return;
 
-      // Simple projection calculation (can be enhanced with engine later)
-      const baseline = calculateSimpleProjection(state.baselineData);
-      const modified = calculateSimpleProjection(state.modifiedData);
+      // Baseline uses original data with no modifications
+      const baseline = calculateSimpleProjection(state.baselineData, []);
+
+      // Modified uses baseline data but applies modifications year-by-year
+      const modified = calculateSimpleProjection(state.baselineData, state.modifications);
 
       setBaselineProjection(baseline);
       setModifiedProjection(modified);
     }
 
     calculateProjections();
-  }, [state.baselineData, state.modifiedData, state.modifications]);
+  }, [state.baselineData, state.modifications]);
 
-  function calculateSimpleProjection(data: any): SeriesPoint[] {
+  function calculateSimpleProjection(data: any, modifications: any[]): SeriesPoint[] {
     const currentDate = new Date();
     const projectionYears = 10;
 
@@ -35,7 +37,6 @@ export default function ProjectionPanel() {
       0
     );
 
-    // Calculate annual income and expenses
     const frequencyMultipliers: Record<string, number> = {
       ANNUAL: 1,
       MONTHLY: 12,
@@ -44,40 +45,98 @@ export default function ProjectionPanel() {
       ONE_TIME: 0,
     };
 
-    const annualIncome = data.incomes.reduce(
-      (sum: number, inc: any) =>
-        sum + inc.amount * (frequencyMultipliers[inc.frequency] ?? 1),
-      0
-    );
-
-    const annualExpenses = data.expenses.reduce(
-      (sum: number, exp: any) =>
-        sum + exp.amount * (frequencyMultipliers[exp.frequency] ?? 1),
-      0
-    );
-
-    // Calculate loan payments
-    const annualLoanPayments = data.loans.reduce((sum: number, loan: any) => {
-      const monthlyRate = loan.interestRate / 12;
-      const numPayments = loan.termYears * 12;
-      const monthlyPayment =
-        (loan.principal * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) /
-        (Math.pow(1 + monthlyRate, numPayments) - 1);
-      return sum + monthlyPayment * 12;
-    }, 0);
-
-    const annualSavings = annualIncome - annualExpenses - annualLoanPayments;
-    const estimatedTaxRate = 0.25;
-    const netAnnualSavings = annualSavings * (1 - estimatedTaxRate);
-    const growthRate = 0.06;
-
-    // Generate projection
+    // Generate projection year by year, applying modifications based on their start dates
     const projection: SeriesPoint[] = [];
     let netWorth = initialNetWorth;
+    const estimatedTaxRate = 0.25;
+    const growthRate = 0.06;
 
     for (let i = 0; i <= projectionYears; i++) {
       const projectionDate = new Date(currentDate);
       projectionDate.setFullYear(currentDate.getFullYear() + i);
+
+      // Calculate income for this year, considering modifications with start dates
+      let annualIncome = 0;
+      data.incomes.forEach((inc: any) => {
+        let incomeAmount = inc.amount;
+
+        // Apply income modifications that are active for this year
+        modifications.forEach((mod: any) => {
+          if (mod.type === "INCOME_CHANGE") {
+            const matches = mod.targetIncomeId
+              ? inc.id === mod.targetIncomeId
+              : inc.name.toLowerCase().includes(mod.targetIncomeName?.toLowerCase() ?? "");
+
+            if (matches && mod.changes.startDate) {
+              const modStartDate = new Date(mod.changes.startDate);
+              if (projectionDate >= modStartDate) {
+                // Modification applies to this year
+                if (mod.changes.amountMultiplier) {
+                  incomeAmount = inc.amount * mod.changes.amountMultiplier;
+                } else if (mod.changes.amountDelta) {
+                  incomeAmount = inc.amount + mod.changes.amountDelta;
+                } else if (mod.changes.amount !== undefined) {
+                  incomeAmount = mod.changes.amount;
+                }
+              }
+            }
+          }
+        });
+
+        annualIncome += incomeAmount * (frequencyMultipliers[inc.frequency] ?? 1);
+      });
+
+      // Calculate expenses for this year
+      let annualExpenses = 0;
+      data.expenses.forEach((exp: any) => {
+        let expenseAmount = exp.amount;
+
+        // Apply expense modifications that are active for this year
+        modifications.forEach((mod: any) => {
+          if (mod.type === "EXPENSE_CHANGE") {
+            const matches = mod.targetExpenseId
+              ? exp.id === mod.targetExpenseId
+              : exp.name.toLowerCase().includes(mod.targetExpenseName?.toLowerCase() ?? "");
+
+            if (matches && mod.changes.startDate) {
+              const modStartDate = new Date(mod.changes.startDate);
+              if (projectionDate >= modStartDate) {
+                if (mod.changes.amountMultiplier) {
+                  expenseAmount = exp.amount * mod.changes.amountMultiplier;
+                } else if (mod.changes.amountDelta) {
+                  expenseAmount = exp.amount + mod.changes.amountDelta;
+                } else if (mod.changes.amount !== undefined) {
+                  expenseAmount = mod.changes.amount;
+                }
+              }
+            }
+          }
+        });
+
+        annualExpenses += expenseAmount * (frequencyMultipliers[exp.frequency] ?? 1);
+      });
+
+      // Calculate loan payments (simplified - assumes constant payments)
+      const annualLoanPayments = data.loans.reduce((sum: number, loan: any) => {
+        if (!loan.principal || !loan.termYears) return sum;
+
+        const monthlyRate = (loan.interestRate || 0) / 12;
+        const numPayments = loan.termYears * 12;
+
+        let monthlyPayment = 0;
+        if (monthlyRate === 0) {
+          monthlyPayment = loan.principal / numPayments;
+        } else {
+          monthlyPayment =
+            (loan.principal * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) /
+            (Math.pow(1 + monthlyRate, numPayments) - 1);
+        }
+
+        return sum + (isNaN(monthlyPayment) ? 0 : monthlyPayment * 12);
+      }, 0);
+
+      const annualSavings = annualIncome - annualExpenses - annualLoanPayments;
+      const netAnnualSavings = annualSavings * (1 - estimatedTaxRate);
 
       projection.push({
         t: projectionDate.toISOString(),

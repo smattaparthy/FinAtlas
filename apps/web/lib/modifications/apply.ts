@@ -75,11 +75,18 @@ function applyIncomeChange(
 
     if (!matches) return income;
 
+    let newAmount = income.amount;
+    if (mod.changes.amountMultiplier) {
+      newAmount = income.amount * mod.changes.amountMultiplier;
+    } else if (mod.changes.amountDelta) {
+      newAmount = income.amount + mod.changes.amountDelta;
+    } else if (mod.changes.amount !== undefined) {
+      newAmount = mod.changes.amount;
+    }
+
     return {
       ...income,
-      amount: mod.changes.amountDelta
-        ? income.amount + mod.changes.amountDelta
-        : mod.changes.amount ?? income.amount,
+      amount: newAmount,
       frequency: mod.changes.frequency ?? income.frequency,
       startDate: mod.changes.startDate ?? income.startDate,
       endDate: mod.changes.endDate ?? income.endDate,
@@ -133,11 +140,18 @@ function applyExpenseChange(
 
     if (!matches) return expense;
 
+    let newAmount = expense.amount;
+    if (mod.changes.amountMultiplier) {
+      newAmount = expense.amount * mod.changes.amountMultiplier;
+    } else if (mod.changes.amountDelta) {
+      newAmount = expense.amount + mod.changes.amountDelta;
+    } else if (mod.changes.amount !== undefined) {
+      newAmount = mod.changes.amount;
+    }
+
     return {
       ...expense,
-      amount: mod.changes.amountDelta
-        ? expense.amount + mod.changes.amountDelta
-        : mod.changes.amount ?? expense.amount,
+      amount: newAmount,
       frequency: mod.changes.frequency ?? expense.frequency,
       category: mod.changes.category ?? expense.category,
       startDate: mod.changes.startDate ?? expense.startDate,

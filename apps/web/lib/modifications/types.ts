@@ -1,4 +1,7 @@
-import type { Frequency } from "@finatlas/schemas";
+import { FrequencySchema } from "@finatlas/schemas";
+import type { z } from "zod";
+
+type Frequency = z.infer<typeof FrequencySchema>;
 
 // Base modification interface
 export interface BaseModification {
@@ -32,6 +35,7 @@ export interface IncomeModification extends BaseModification {
     name?: string;
     amount?: number;
     amountDelta?: number;
+    amountMultiplier?: number;
     frequency?: Frequency;
     startDate?: string;
     endDate?: string;
@@ -47,6 +51,7 @@ export interface ExpenseModification extends BaseModification {
     name?: string;
     amount?: number;
     amountDelta?: number;
+    amountMultiplier?: number;
     frequency?: Frequency;
     category?: string;
     startDate?: string;
