@@ -57,6 +57,7 @@ export default function SavingsRateChart({
 
     // Create SVG path
     const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+    const areaPath = `${linePath} L ${width} ${chartHeight} L 0 ${chartHeight} Z`;
 
     // Y-axis ticks
     const tickCount = 5;
@@ -66,7 +67,7 @@ export default function SavingsRateChart({
       return { value, y };
     });
 
-    return { points, linePath, ticks, savingsRateData };
+    return { points, linePath, areaPath, ticks, savingsRateData };
   }, [incomeSeries, expenseSeries, taxesSeries]);
 
   if (!chartData || incomeSeries.length < 2) {
@@ -112,6 +113,18 @@ export default function SavingsRateChart({
             />
           ))}
 
+          {/* Area fill with gradient */}
+          <defs>
+            <linearGradient id="savingsRateGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgb(139, 92, 246)" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="rgb(139, 92, 246)" stopOpacity="0.1" />
+            </linearGradient>
+          </defs>
+          <path
+            d={chartData.areaPath}
+            fill="url(#savingsRateGradient)"
+          />
+
           {/* Line */}
           <path
             d={chartData.linePath}
@@ -120,18 +133,6 @@ export default function SavingsRateChart({
             strokeWidth="2"
             vectorEffect="non-scaling-stroke"
           />
-
-          {/* Data points */}
-          {chartData.points.map((point, i) => (
-            <circle
-              key={i}
-              cx={point.x}
-              cy={point.y}
-              r="2"
-              fill="rgb(139, 92, 246)"
-              className="hover:r-3 transition-all"
-            />
-          ))}
         </svg>
       </div>
 

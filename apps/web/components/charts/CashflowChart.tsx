@@ -47,6 +47,7 @@ export default function CashflowChart({ series, height = 300 }: CashflowChartPro
 
     // Create SVG path
     const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+    const areaPath = `${linePath} L ${width} ${chartHeight} L 0 ${chartHeight} Z`;
 
     // Y-axis ticks
     const tickCount = 5;
@@ -59,7 +60,7 @@ export default function CashflowChart({ series, height = 300 }: CashflowChartPro
     // Zero line (if applicable)
     const zeroY = chartHeight - ((0 - adjustedMin) / adjustedRange) * chartHeight;
 
-    return { points, linePath, ticks, adjustedMin, adjustedMax, zeroY };
+    return { points, linePath, areaPath, ticks, adjustedMin, adjustedMax, zeroY };
   }, [series]);
 
   if (!chartData || series.length < 2) {
@@ -119,26 +120,26 @@ export default function CashflowChart({ series, height = 300 }: CashflowChartPro
             />
           )}
 
+          {/* Area fill with gradient */}
+          <defs>
+            <linearGradient id="cashflowGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgb(34, 211, 152)" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="rgb(34, 211, 152)" stopOpacity="0.1" />
+            </linearGradient>
+          </defs>
+          <path
+            d={chartData.areaPath}
+            fill="url(#cashflowGradient)"
+          />
+
           {/* Line */}
           <path
             d={chartData.linePath}
             fill="none"
             stroke="rgb(34, 211, 152)"
-            strokeWidth="1.5"
+            strokeWidth="2"
             vectorEffect="non-scaling-stroke"
           />
-
-          {/* Data points */}
-          {chartData.points.map((point, i) => (
-            <circle
-              key={i}
-              cx={point.x}
-              cy={point.y}
-              r="2"
-              fill="rgb(34, 211, 152)"
-              className="hover:r-3 transition-all"
-            />
-          ))}
         </svg>
       </div>
 

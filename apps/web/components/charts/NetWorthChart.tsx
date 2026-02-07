@@ -102,8 +102,8 @@ export default function NetWorthChart({ series, height = 200 }: NetWorthChartPro
           {/* Area fill with gradient */}
           <defs>
             <linearGradient id="netWorthGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgb(34, 197, 94)" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="rgb(34, 197, 94)" stopOpacity="0" />
+              <stop offset="0%" stopColor="rgb(34, 197, 94)" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="rgb(34, 197, 94)" stopOpacity="0.1" />
             </linearGradient>
           </defs>
           <path
@@ -116,21 +116,9 @@ export default function NetWorthChart({ series, height = 200 }: NetWorthChartPro
             d={chartData.linePath}
             fill="none"
             stroke="rgb(34, 197, 94)"
-            strokeWidth="1.5"
+            strokeWidth="2"
             vectorEffect="non-scaling-stroke"
           />
-
-          {/* Data points */}
-          {chartData.points.map((point, i) => (
-            <circle
-              key={i}
-              cx={point.x}
-              cy={point.y}
-              r="2"
-              fill="rgb(34, 197, 94)"
-              className="hover:r-3 transition-all"
-            />
-          ))}
         </svg>
       </div>
 

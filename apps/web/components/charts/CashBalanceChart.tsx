@@ -147,18 +147,6 @@ export default function CashBalanceChart({ series, height = 300 }: CashBalanceCh
             strokeWidth="2"
             vectorEffect="non-scaling-stroke"
           />
-
-          {/* Data points */}
-          {chartData.points.map((point, i) => (
-            <circle
-              key={i}
-              cx={point.x}
-              cy={point.y}
-              r="2"
-              fill="rgb(20, 184, 166)"
-              className="hover:r-3 transition-all"
-            />
-          ))}
         </svg>
       </div>
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useScenario } from "@/contexts/ScenarioContext";
 
 type Goal = {
   id: string;
@@ -98,46 +99,21 @@ function ProgressBar({ progress }: { progress: number }) {
 }
 
 export default function GoalsPage() {
+  const { selectedScenarioId, isLoading: scenarioLoading, error: scenarioError } = useScenario();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [scenarioId, setScenarioId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("priority");
 
-  // Fetch scenario ID
-  useEffect(() => {
-    async function fetchScenarioId() {
-      try {
-        const res = await fetch("/api/scenarios?limit=1");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.scenarios?.length > 0) {
-            setScenarioId(data.scenarios[0].id);
-          } else {
-            setError("No scenario found. Please create a household and scenario first.");
-            setLoading(false);
-          }
-        } else {
-          setError("Unable to load scenarios. Please ensure you have a household set up.");
-          setLoading(false);
-        }
-      } catch {
-        setError("Failed to load scenarios");
-        setLoading(false);
-      }
-    }
-    fetchScenarioId();
-  }, []);
-
   // Fetch goals
   useEffect(() => {
-    if (!scenarioId) return;
+    if (!selectedScenarioId) return;
 
     async function fetchGoals() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/goals?scenarioId=${scenarioId}`);
+        const res = await fetch(`/api/goals?scenarioId=${selectedScenarioId}`);
         if (!res.ok) {
           throw new Error("Failed to fetch goals");
         }
@@ -150,7 +126,7 @@ export default function GoalsPage() {
       }
     }
     fetchGoals();
-  }, [scenarioId]);
+  }, [selectedScenarioId]);
 
   async function handleDelete(goalId: string) {
     if (!confirm("Are you sure you want to delete this goal?")) return;
@@ -223,7 +199,7 @@ export default function GoalsPage() {
           </p>
         </div>
         <Link
-          href={`/goals/new${scenarioId ? `?scenarioId=${scenarioId}` : ""}`}
+          href={`/goals/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
           className="px-4 py-2 bg-zinc-50 text-zinc-950 rounded-xl font-medium hover:bg-zinc-200 transition-colors"
         >
           Add Goal
@@ -285,7 +261,7 @@ export default function GoalsPage() {
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-12 text-center">
           <div className="text-zinc-400 mb-4">No goals yet</div>
           <Link
-            href={`/goals/new${scenarioId ? `?scenarioId=${scenarioId}` : ""}`}
+            href={`/goals/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
             className="text-sm text-zinc-50 hover:text-zinc-200 underline"
           >
             Add your first goal

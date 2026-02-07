@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useScenario } from "@/contexts/ScenarioContext";
 import CSVImportWizard from "@/components/import/CSVImportWizard";
 
 type Expense = {
@@ -75,48 +76,24 @@ function groupByCategory(expenses: Expense[]): Record<string, Expense[]> {
 }
 
 export default function ExpensesPage() {
+  const { selectedScenarioId, isLoading: scenarioLoading, error: scenarioError } = useScenario();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [scenarioId, setScenarioId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [showImport, setShowImport] = useState(false);
 
-  // Fetch scenario ID
-  useEffect(() => {
-    async function fetchScenarioId() {
-      try {
-        const res = await fetch("/api/scenarios?limit=1");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.scenarios?.length > 0) {
-            setScenarioId(data.scenarios[0].id);
-          } else {
-            setError("No scenario found. Please create a household and scenario first.");
-            setLoading(false);
-          }
-        } else {
-          setError("Unable to load scenarios. Please ensure you have a household set up.");
-          setLoading(false);
-        }
-      } catch {
-        setError("Failed to load scenarios");
-        setLoading(false);
-      }
-    }
-    fetchScenarioId();
-  }, []);
-
   // Fetch expenses
   useEffect(() => {
-    if (!scenarioId) return;
+    if (!selectedScenarioId) return;
 
     async function fetchExpenses() {
       setLoading(true);
+      setError(null);
       try {
-        const res = await fetch(`/api/expenses?scenarioId=${scenarioId}`);
+        const res = await fetch(`/api/expenses?scenarioId=${selectedScenarioId}`);
         if (!res.ok) {
           throw new Error("Failed to fetch expenses");
         }
@@ -132,7 +109,7 @@ export default function ExpensesPage() {
       }
     }
     fetchExpenses();
-  }, [scenarioId]);
+  }, [selectedScenarioId]);
 
   async function handleDelete(expenseId: string) {
     if (!confirm("Are you sure you want to delete this expense?")) return;
@@ -165,8 +142,8 @@ export default function ExpensesPage() {
 
   async function handleImportComplete(count: number) {
     setShowImport(false);
-    if (count > 0 && scenarioId) {
-      const res = await fetch(`/api/expenses?scenarioId=${scenarioId}`);
+    if (count > 0 && selectedScenarioId) {
+      const res = await fetch(`/api/expenses?selectedScenarioId=${selectedScenarioId}`);
       if (res.ok) {
         const data = await res.json();
         setExpenses(data.expenses);
@@ -201,7 +178,7 @@ export default function ExpensesPage() {
     .filter((e) => e.isDiscretionary)
     .reduce((sum, e) => sum + annualizeAmount(e.amount, e.frequency), 0);
 
-  if (loading) {
+  if (scenarioLoading || (loading && selectedScenarioId)) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-zinc-400">Loading expenses...</div>
@@ -209,10 +186,21 @@ export default function ExpensesPage() {
     );
   }
 
-  if (error) {
+  if (scenarioError || error) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="text-red-400">{error}</div>
+        <div className="text-red-400">{scenarioError || error}</div>
+        <Link href="/" className="text-sm text-zinc-400 hover:text-zinc-50 transition-colors">
+          Go to Dashboard
+        </Link>
+      </div>
+    );
+  }
+
+  if (!selectedScenarioId) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <div className="text-zinc-400">No scenario selected. Please create a household and scenario first.</div>
         <Link href="/" className="text-sm text-zinc-400 hover:text-zinc-50 transition-colors">
           Go to Dashboard
         </Link>
@@ -236,7 +224,7 @@ export default function ExpensesPage() {
             Import CSV
           </button>
           <Link
-            href={`/expenses/new${scenarioId ? `?scenarioId=${scenarioId}` : ""}`}
+            href={`/expenses/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
             className="px-4 py-2 bg-zinc-50 text-zinc-950 rounded-xl font-medium hover:bg-zinc-200 transition-colors"
           >
             Add Expense
@@ -245,12 +233,12 @@ export default function ExpensesPage() {
       </div>
 
       {/* Import Modal */}
-      {showImport && scenarioId && (
+      {showImport && selectedScenarioId && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <CSVImportWizard
               type="expense"
-              scenarioId={scenarioId}
+              selectedScenarioId={selectedScenarioId}
               onComplete={handleImportComplete}
               onCancel={() => setShowImport(false)}
             />
@@ -317,7 +305,7 @@ export default function ExpensesPage() {
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-12 text-center">
           <div className="text-zinc-400 mb-4">No expenses yet</div>
           <Link
-            href={`/expenses/new${scenarioId ? `?scenarioId=${scenarioId}` : ""}`}
+            href={`/expenses/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
             className="text-sm text-zinc-50 hover:text-zinc-200 underline"
           >
             Add your first expense

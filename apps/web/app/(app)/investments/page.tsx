@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useScenario } from "@/contexts/ScenarioContext";
 import CSVImportWizard from "@/components/import/CSVImportWizard";
 
 type Holding = {
@@ -70,44 +71,20 @@ function formatPercent(rate: number): string {
 }
 
 export default function InvestmentsPage() {
+  const { selectedScenarioId, isLoading: scenarioLoading, error: scenarioError } = useScenario();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [scenarioId, setScenarioId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
 
   useEffect(() => {
-    async function fetchScenarioId() {
-      try {
-        const res = await fetch("/api/scenarios?limit=1");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.scenarios?.length > 0) {
-            setScenarioId(data.scenarios[0].id);
-          } else {
-            setError("No scenario found. Please create a household and scenario first.");
-            setLoading(false);
-          }
-        } else {
-          setError("Unable to load scenarios.");
-          setLoading(false);
-        }
-      } catch {
-        setError("Failed to load scenarios");
-        setLoading(false);
-      }
-    }
-    fetchScenarioId();
-  }, []);
-
-  useEffect(() => {
-    if (!scenarioId) return;
+    if (!selectedScenarioId) return;
 
     async function fetchAccounts() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/accounts?scenarioId=${scenarioId}`);
+        const res = await fetch(`/api/accounts?scenarioId=${selectedScenarioId}`);
         if (!res.ok) {
           throw new Error("Failed to fetch accounts");
         }
@@ -120,7 +97,7 @@ export default function InvestmentsPage() {
       }
     }
     fetchAccounts();
-  }, [scenarioId]);
+  }, [selectedScenarioId]);
 
   async function handleDelete(accountId: string) {
     if (!confirm("Are you sure you want to delete this account?")) return;
@@ -141,8 +118,8 @@ export default function InvestmentsPage() {
 
   async function handleImportComplete(count: number) {
     setShowImport(false);
-    if (count > 0 && scenarioId) {
-      const res = await fetch(`/api/accounts?scenarioId=${scenarioId}`);
+    if (count > 0 && selectedScenarioId) {
+      const res = await fetch(`/api/accounts?selectedScenarioId=${selectedScenarioId}`);
       if (res.ok) {
         const data = await res.json();
         setAccounts(data.accounts);
@@ -209,7 +186,7 @@ export default function InvestmentsPage() {
             Import CSV
           </button>
           <Link
-            href={`/investments/new${scenarioId ? `?scenarioId=${scenarioId}` : ""}`}
+            href={`/investments/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
             className="px-4 py-2 bg-zinc-50 text-zinc-950 rounded-xl font-medium hover:bg-zinc-200 transition-colors"
           >
             Add Account
@@ -218,12 +195,12 @@ export default function InvestmentsPage() {
       </div>
 
       {/* Import Modal */}
-      {showImport && scenarioId && (
+      {showImport && selectedScenarioId && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <CSVImportWizard
               type="account"
-              scenarioId={scenarioId}
+              selectedScenarioId={selectedScenarioId}
               onComplete={handleImportComplete}
               onCancel={() => setShowImport(false)}
             />
@@ -260,7 +237,7 @@ export default function InvestmentsPage() {
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-12 text-center">
           <div className="text-zinc-400 mb-4">No investment accounts yet</div>
           <Link
-            href={`/investments/new${scenarioId ? `?scenarioId=${scenarioId}` : ""}`}
+            href={`/investments/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
             className="text-sm text-zinc-50 hover:text-zinc-200 underline"
           >
             Add your first account

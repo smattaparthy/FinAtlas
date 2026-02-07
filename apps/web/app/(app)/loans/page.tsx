@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useScenario } from "@/contexts/ScenarioContext";
 import CSVImportWizard from "@/components/import/CSVImportWizard";
 
 type Loan = {
@@ -74,48 +75,20 @@ function PayoffProgressBar({ principal, currentBalance }: { principal: number; c
 }
 
 export default function LoansPage() {
+  const { selectedScenarioId, isLoading: scenarioLoading, error: scenarioError } = useScenario();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [scenarioId, setScenarioId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
 
-  // For demo purposes, we'll need to get a scenarioId
-  // In a real app, this would come from route params or a scenario selector
   useEffect(() => {
-    async function fetchScenarioId() {
-      try {
-        // First try to get a scenario from the user's households
-        const res = await fetch("/api/scenarios?limit=1");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.scenarios?.length > 0) {
-            setScenarioId(data.scenarios[0].id);
-          } else {
-            setError("No scenario found. Please create a household and scenario first.");
-            setLoading(false);
-          }
-        } else {
-          // Fallback: try direct query for demo
-          setError("Unable to load scenarios. Please ensure you have a household set up.");
-          setLoading(false);
-        }
-      } catch {
-        setError("Failed to load scenarios");
-        setLoading(false);
-      }
-    }
-    fetchScenarioId();
-  }, []);
-
-  useEffect(() => {
-    if (!scenarioId) return;
+    if (!selectedScenarioId) return;
 
     async function fetchLoans() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/loans?scenarioId=${scenarioId}`);
+        const res = await fetch(`/api/loans?scenarioId=${selectedScenarioId}`);
         if (!res.ok) {
           throw new Error("Failed to fetch loans");
         }
@@ -128,7 +101,7 @@ export default function LoansPage() {
       }
     }
     fetchLoans();
-  }, [scenarioId]);
+  }, [selectedScenarioId]);
 
   async function handleDelete(loanId: string) {
     if (!confirm("Are you sure you want to delete this loan?")) return;
@@ -149,8 +122,8 @@ export default function LoansPage() {
 
   async function handleImportComplete(count: number) {
     setShowImport(false);
-    if (count > 0 && scenarioId) {
-      const res = await fetch(`/api/loans?scenarioId=${scenarioId}`);
+    if (count > 0 && selectedScenarioId) {
+      const res = await fetch(`/api/loans?selectedScenarioId=${selectedScenarioId}`);
       if (res.ok) {
         const data = await res.json();
         setLoans(data.loans);
@@ -201,7 +174,7 @@ export default function LoansPage() {
             Import CSV
           </button>
           <Link
-            href={`/loans/new${scenarioId ? `?scenarioId=${scenarioId}` : ""}`}
+            href={`/loans/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
             className="px-4 py-2 bg-zinc-50 text-zinc-950 rounded-xl font-medium hover:bg-zinc-200 transition-colors"
           >
             Add Loan
@@ -210,12 +183,12 @@ export default function LoansPage() {
       </div>
 
       {/* Import Modal */}
-      {showImport && scenarioId && (
+      {showImport && selectedScenarioId && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <CSVImportWizard
               type="loan"
-              scenarioId={scenarioId}
+              selectedScenarioId={selectedScenarioId}
               onComplete={handleImportComplete}
               onCancel={() => setShowImport(false)}
             />
@@ -249,7 +222,7 @@ export default function LoansPage() {
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-12 text-center">
           <div className="text-zinc-400 mb-4">No loans yet</div>
           <Link
-            href={`/loans/new${scenarioId ? `?scenarioId=${scenarioId}` : ""}`}
+            href={`/loans/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
             className="text-sm text-zinc-50 hover:text-zinc-200 underline"
           >
             Add your first loan
