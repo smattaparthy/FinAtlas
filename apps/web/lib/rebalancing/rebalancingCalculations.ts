@@ -1,4 +1,4 @@
-export type AssetClass = "Stocks" | "Bonds" | "Cash";
+type AssetClass = "Stocks" | "Bonds" | "Cash";
 
 export interface RiskProfile {
   stocks: number;  // percentage 0-100
@@ -28,7 +28,7 @@ export interface RebalanceResult {
   driftScore: number;    // sum of |difference| across all classes
 }
 
-export function classifyAccount(type: string): AssetClass {
+function classifyAccount(type: string): AssetClass {
   if (type === "SAVINGS") {
     return "Cash";
   }

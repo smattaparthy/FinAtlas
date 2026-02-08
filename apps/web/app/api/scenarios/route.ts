@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { DEFAULT_ASSUMPTIONS } from "@/lib/constants";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -55,10 +56,7 @@ export async function GET() {
             where: { householdId: newHousehold.id },
             select: { id: true },
           }))!.id,
-          projectionYears: 30,
-          inflationRate: 0.025,
-          defaultGrowthRate: 0.07,
-          retirementWithdrawalRate: 0.04,
+          ...DEFAULT_ASSUMPTIONS,
         },
       });
 

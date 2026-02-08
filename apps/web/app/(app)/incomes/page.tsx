@@ -82,23 +82,27 @@ export default function IncomesPage() {
   useEffect(() => {
     if (!selectedScenarioId) return;
 
+    const abortController = new AbortController();
+
     async function fetchIncomes() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/incomes?scenarioId=${selectedScenarioId}`);
+        const res = await fetch(`/api/incomes?scenarioId=${selectedScenarioId}`, { signal: abortController.signal });
         if (!res.ok) {
           throw new Error("Failed to fetch incomes");
         }
         const data = await res.json();
         setIncomes(data.incomes);
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load incomes");
       } finally {
         setLoading(false);
       }
     }
     fetchIncomes();
+    return () => abortController.abort();
   }, [selectedScenarioId]);
 
   async function handleDelete(incomeId: string) {

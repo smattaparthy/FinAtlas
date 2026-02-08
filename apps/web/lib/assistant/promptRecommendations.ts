@@ -1,6 +1,6 @@
 import type { ScenarioData } from "@/lib/modifications/apply";
 
-export interface PromptRecommendation {
+interface PromptRecommendation {
   id: string;
   category: "general" | "income" | "expense" | "loan" | "investment" | "life-event";
   icon: string;

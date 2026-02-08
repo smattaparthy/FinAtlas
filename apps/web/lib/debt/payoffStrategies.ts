@@ -14,7 +14,7 @@ export interface MonthlyPayoffState {
   loanBalances: Record<string, number>;
 }
 
-export interface PayoffResult {
+interface PayoffResult {
   strategy: "avalanche" | "snowball";
   schedule: MonthlyPayoffState[];
   totalMonths: number;

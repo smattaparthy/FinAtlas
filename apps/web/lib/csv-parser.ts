@@ -2,16 +2,22 @@
  * CSV Parser utility for importing financial data.
  */
 
-export interface CSVParseResult {
+interface CSVParseResult {
   headers: string[];
   rows: string[][];
   errors: string[];
 }
 
+const MAX_CSV_SIZE = 10 * 1024 * 1024; // 10MB
+
 /**
  * Parse CSV text into structured data.
  */
 export function parseCSV(text: string): CSVParseResult {
+  if (text.length > MAX_CSV_SIZE) {
+    return { headers: [], rows: [], errors: ["File exceeds maximum size of 10MB"] };
+  }
+
   const errors: string[] = [];
   const lines = text.split(/\r?\n/).filter((line) => line.trim());
 

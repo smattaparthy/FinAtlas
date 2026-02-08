@@ -35,81 +35,91 @@ async function verifyScenarioOwnership(userId: string, scenarioId: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const scenarioId = req.nextUrl.searchParams.get("scenarioId");
+    if (!scenarioId) {
+      return NextResponse.json({ error: "scenarioId is required" }, { status: 400 });
+    }
+
+    const hasAccess = await verifyScenarioOwnership(user.id, scenarioId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: "Scenario not found" }, { status: 404 });
+    }
+
+    const incomes = await prisma.income.findMany({
+      where: { scenarioId },
+      include: {
+        member: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({ incomes });
+  } catch (error) {
+    console.error("Error fetching incomes:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const scenarioId = req.nextUrl.searchParams.get("scenarioId");
-  if (!scenarioId) {
-    return NextResponse.json({ error: "scenarioId is required" }, { status: 400 });
-  }
-
-  const hasAccess = await verifyScenarioOwnership(user.id, scenarioId);
-  if (!hasAccess) {
-    return NextResponse.json({ error: "Scenario not found" }, { status: 404 });
-  }
-
-  const incomes = await prisma.income.findMany({
-    where: { scenarioId },
-    include: {
-      member: { select: { id: true, name: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return NextResponse.json({ incomes });
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const body = await req.json().catch(() => null);
-  if (!body) {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+    const body = await req.json().catch(() => null);
+    if (!body) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
 
-  const parsed = CreateIncomeSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
+    const parsed = CreateIncomeSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
 
-  const { scenarioId, memberId, ...incomeData } = parsed.data;
+    const { scenarioId, memberId, ...incomeData } = parsed.data;
 
-  const hasAccess = await verifyScenarioOwnership(user.id, scenarioId);
-  if (!hasAccess) {
-    return NextResponse.json({ error: "Scenario not found" }, { status: 404 });
-  }
+    const hasAccess = await verifyScenarioOwnership(user.id, scenarioId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: "Scenario not found" }, { status: 404 });
+    }
 
-  // Verify member belongs to the household if provided
-  if (memberId) {
-    const member = await prisma.householdMember.findFirst({
-      where: {
-        id: memberId,
-        household: { ownerUserId: user.id },
+    // Verify member belongs to the household if provided
+    if (memberId) {
+      const member = await prisma.householdMember.findFirst({
+        where: {
+          id: memberId,
+          household: { ownerUserId: user.id },
+        },
+      });
+      if (!member) {
+        return NextResponse.json({ error: "Member not found" }, { status: 400 });
+      }
+    }
+
+    const income = await prisma.income.create({
+      data: {
+        scenarioId,
+        memberId: memberId ?? null,
+        ...incomeData,
+      },
+      include: {
+        member: { select: { id: true, name: true } },
       },
     });
-    if (!member) {
-      return NextResponse.json({ error: "Member not found" }, { status: 400 });
-    }
+
+    return NextResponse.json({ income }, { status: 201 });
+  } catch (error) {
+    console.error("Error creating income:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const income = await prisma.income.create({
-    data: {
-      scenarioId,
-      memberId: memberId ?? null,
-      ...incomeData,
-    },
-    include: {
-      member: { select: { id: true, name: true } },
-    },
-  });
-
-  return NextResponse.json({ income }, { status: 201 });
 }

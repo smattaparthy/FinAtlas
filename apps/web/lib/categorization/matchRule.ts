@@ -1,6 +1,6 @@
 import type { CategorizationRule } from "./defaultRules";
 
-export function matchExpense(name: string, rule: CategorizationRule): boolean {
+function matchExpense(name: string, rule: CategorizationRule): boolean {
   const lowerName = name.toLowerCase();
   const lowerPattern = rule.pattern.toLowerCase();
 

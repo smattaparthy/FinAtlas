@@ -37,92 +37,107 @@ async function getGoalWithAccess(goalId: string, userId: string) {
 
 // GET /api/goals/[id] - Get a single goal
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const goal = await getGoalWithAccess(id, user.id);
+
+    if (!goal) {
+      return NextResponse.json(
+        { error: "Goal not found or access denied" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ goal });
+  } catch (error) {
+    console.error("Error fetching goal:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const { id } = await params;
-  const goal = await getGoalWithAccess(id, user.id);
-
-  if (!goal) {
-    return NextResponse.json(
-      { error: "Goal not found or access denied" },
-      { status: 404 }
-    );
-  }
-
-  return NextResponse.json({ goal });
 }
 
 // PUT /api/goals/[id] - Update a goal
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { id } = await params;
-  const existingGoal = await getGoalWithAccess(id, user.id);
-
-  if (!existingGoal) {
-    return NextResponse.json(
-      { error: "Goal not found or access denied" },
-      { status: 404 }
-    );
-  }
-
-  let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const existingGoal = await getGoalWithAccess(id, user.id);
+
+    if (!existingGoal) {
+      return NextResponse.json(
+        { error: "Goal not found or access denied" },
+        { status: 404 }
+      );
+    }
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const parsed = updateGoalSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const { name, type, targetAmount, targetDate, priority } = parsed.data;
+
+    const goal = await prisma.goal.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(type !== undefined && { type }),
+        ...(targetAmount !== undefined && { targetAmount }),
+        ...(targetDate !== undefined && {
+          targetDate: targetDate ? new Date(targetDate) : null,
+        }),
+        ...(priority !== undefined && { priority }),
+      },
+    });
+
+    return NextResponse.json({ goal });
+  } catch (error) {
+    console.error("Error updating goal:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const parsed = updateGoalSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
-
-  const { name, type, targetAmount, targetDate, priority } = parsed.data;
-
-  const goal = await prisma.goal.update({
-    where: { id },
-    data: {
-      ...(name !== undefined && { name }),
-      ...(type !== undefined && { type }),
-      ...(targetAmount !== undefined && { targetAmount }),
-      ...(targetDate !== undefined && {
-        targetDate: targetDate ? new Date(targetDate) : null,
-      }),
-      ...(priority !== undefined && { priority }),
-    },
-  });
-
-  return NextResponse.json({ goal });
 }
 
 // DELETE /api/goals/[id] - Delete a goal
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const existingGoal = await getGoalWithAccess(id, user.id);
+
+    if (!existingGoal) {
+      return NextResponse.json(
+        { error: "Goal not found or access denied" },
+        { status: 404 }
+      );
+    }
+
+    await prisma.goal.delete({ where: { id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting goal:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const { id } = await params;
-  const existingGoal = await getGoalWithAccess(id, user.id);
-
-  if (!existingGoal) {
-    return NextResponse.json(
-      { error: "Goal not found or access denied" },
-      { status: 404 }
-    );
-  }
-
-  await prisma.goal.delete({ where: { id } });
-
-  return NextResponse.json({ success: true });
 }

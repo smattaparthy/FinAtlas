@@ -1,4 +1,4 @@
-export type FieldType = "number" | "date" | "percentage";
+type FieldType = "number" | "date" | "percentage";
 
 export interface TemplateField {
   key: string;

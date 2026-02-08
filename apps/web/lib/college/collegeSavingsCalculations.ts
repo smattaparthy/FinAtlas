@@ -118,7 +118,7 @@ export function projectCollegeSavings(
  *
  * where r = monthly rate, n = total months
  */
-export function calculateRequiredMonthly(
+function calculateRequiredMonthly(
   currentSavings: number,
   years: number,
   targetAmount: number,

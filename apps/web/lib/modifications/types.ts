@@ -4,14 +4,14 @@ import type { z } from "zod";
 type Frequency = z.infer<typeof FrequencySchema>;
 
 // Base modification interface
-export interface BaseModification {
+interface BaseModification {
   id: string;
   type: ModificationType;
   description: string;
   appliedAt: string;
 }
 
-export type ModificationType =
+type ModificationType =
   | "INCOME_CHANGE"
   | "INCOME_ADD"
   | "INCOME_REMOVE"

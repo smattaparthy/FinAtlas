@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { FREQUENCY_MULTIPLIERS, DEFAULT_TAX_RATE, DEFAULT_PROJECTION_GROWTH_RATE } from "@/lib/constants";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -57,21 +58,13 @@ export async function GET(request: Request) {
     ]);
 
     // Calculate annualized totals
-    const frequencyMultipliers: Record<string, number> = {
-      ANNUAL: 1,
-      MONTHLY: 12,
-      BIWEEKLY: 26,
-      WEEKLY: 52,
-      ONE_TIME: 0,
-    };
-
     const totalAnnualIncome = incomes.reduce((sum, i) => {
-      const multiplier = frequencyMultipliers[i.frequency] ?? 1;
+      const multiplier = FREQUENCY_MULTIPLIERS[i.frequency] ?? 1;
       return sum + i.amount * multiplier;
     }, 0);
 
     const totalAnnualExpenses = expenses.reduce((sum, e) => {
-      const multiplier = frequencyMultipliers[e.frequency] ?? 1;
+      const multiplier = FREQUENCY_MULTIPLIERS[e.frequency] ?? 1;
       return sum + e.amount * multiplier;
     }, 0);
 
@@ -134,9 +127,9 @@ function calculateGoalsProgress({
   if (goals.length === 0) return 0;
 
   const annualSavings = annualIncome - annualExpenses - annualLoanPayments;
-  const estimatedTaxRate = 0.25;
+  const estimatedTaxRate = DEFAULT_TAX_RATE;
   const netAnnualSavings = annualSavings * (1 - estimatedTaxRate);
-  const growthRate = 0.06; // 6% average growth rate
+  const growthRate = DEFAULT_PROJECTION_GROWTH_RATE;
 
   // Calculate progress for each goal
   const goalProgresses = goals.map((goal) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useScenario } from "@/contexts/ScenarioContext";
 import ProjectionChart from "@/components/dashboard/ProjectionChart";
 import HealthScoreGauge from "@/components/dashboard/HealthScoreGauge";
@@ -160,13 +160,15 @@ export function DashboardClient({ userName }: { userName: string }) {
       return;
     }
 
+    const abortController = new AbortController();
+
     async function fetchDashboardData() {
       setLoading(true);
       setError(null);
       try {
         const [dashRes, healthRes] = await Promise.all([
-          fetch(`/api/dashboard?scenarioId=${selectedScenarioId}`),
-          fetch(`/api/health-score?scenarioId=${selectedScenarioId}`),
+          fetch(`/api/dashboard?scenarioId=${selectedScenarioId}`, { signal: abortController.signal }),
+          fetch(`/api/health-score?scenarioId=${selectedScenarioId}`, { signal: abortController.signal }),
         ]);
 
         if (!dashRes.ok) throw new Error("Failed to fetch dashboard data");
@@ -178,6 +180,7 @@ export function DashboardClient({ userName }: { userName: string }) {
           setHealthScore(healthData);
         }
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load dashboard");
       } finally {
         setLoading(false);
@@ -185,6 +188,7 @@ export function DashboardClient({ userName }: { userName: string }) {
     }
 
     fetchDashboardData();
+    return () => abortController.abort();
   }, [selectedScenarioId]);
 
   if (scenarioLoading || (loading && selectedScenarioId)) {
@@ -208,7 +212,7 @@ export function DashboardClient({ userName }: { userName: string }) {
   }
 
   // Build a map of widget ID -> rendered JSX
-  const widgetRenderers: Record<string, React.ReactNode> = {
+  const widgetRenderers: Record<string, React.ReactNode> = useMemo(() => ({
     "summary-cards": data ? (
       <div key="summary-cards" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard
@@ -279,14 +283,14 @@ export function DashboardClient({ userName }: { userName: string }) {
       healthScore && healthScore.insights.length > 0 ? (
         <InsightsPanel key="recent-insights" insights={healthScore.insights} />
       ) : null,
-  };
+  }), [data, healthScore, selectedScenarioId]);
 
   // Render widgets sorted by user-configured order, filtered by enabled state
-  const sortedWidgets = [...widgetConfig]
+  const sortedWidgets = useMemo(() => [...widgetConfig]
     .sort((a, b) => a.order - b.order)
     .filter((w) => w.enabled && widgetRenderers[w.id] !== undefined)
     .map((w) => widgetRenderers[w.id])
-    .filter(Boolean);
+    .filter(Boolean), [widgetConfig, widgetRenderers]);
 
   return (
     <div className="space-y-6">

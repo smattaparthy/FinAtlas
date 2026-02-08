@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { z } from "zod";
+import { DEFAULT_ASSUMPTIONS } from "@/lib/constants";
 
 const createHouseholdSchema = z.object({
   name: z.string().min(1, "Household name is required").max(100),
@@ -106,10 +107,7 @@ export async function POST(request: Request) {
     await prisma.scenarioAssumption.create({
       data: {
         scenarioId: scenario.id,
-        projectionYears: 30,
-        inflationRate: 0.025,
-        defaultGrowthRate: 0.07,
-        retirementWithdrawalRate: 0.04,
+        ...DEFAULT_ASSUMPTIONS,
       },
     });
 

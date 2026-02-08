@@ -79,22 +79,26 @@ export default function InvestmentsPage() {
   useEffect(() => {
     if (!selectedScenarioId) return;
 
+    const abortController = new AbortController();
+
     async function fetchAccounts() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/accounts?scenarioId=${selectedScenarioId}`);
+        const res = await fetch(`/api/accounts?scenarioId=${selectedScenarioId}`, { signal: abortController.signal });
         if (!res.ok) {
           throw new Error("Failed to fetch accounts");
         }
         const data = await res.json();
         setAccounts(data.accounts);
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load accounts");
       } finally {
         setLoading(false);
       }
     }
     fetchAccounts();
+    return () => abortController.abort();
   }, [selectedScenarioId]);
 
   async function handleDelete(accountId: string) {

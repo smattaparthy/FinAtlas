@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useScenario } from "@/contexts/ScenarioContext";
 import { useToast } from "@/components/ui/Toast";
@@ -108,22 +108,26 @@ export default function GoalsPage() {
   useEffect(() => {
     if (!selectedScenarioId) return;
 
+    const abortController = new AbortController();
+
     async function fetchGoals() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/goals?scenarioId=${selectedScenarioId}`);
+        const res = await fetch(`/api/goals?scenarioId=${selectedScenarioId}`, { signal: abortController.signal });
         if (!res.ok) {
           throw new Error("Failed to fetch goals");
         }
         const data = await res.json();
         setGoals(data.goals);
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load goals");
       } finally {
         setLoading(false);
       }
     }
     fetchGoals();
+    return () => abortController.abort();
   }, [selectedScenarioId]);
 
   async function handleDelete(goalId: string) {
@@ -144,7 +148,7 @@ export default function GoalsPage() {
   }
 
   // Sort goals
-  const sortedGoals = [...goals].sort((a, b) => {
+  const sortedGoals = useMemo(() => [...goals].sort((a, b) => {
     switch (sortBy) {
       case "priority":
         return a.priority - b.priority;
@@ -158,11 +162,11 @@ export default function GoalsPage() {
       default:
         return 0;
     }
-  });
+  }), [goals, sortBy]);
 
   // Calculate totals
-  const totalTargetAmount = goals.reduce((sum, goal) => sum + goal.targetAmount, 0);
-  const highPriorityCount = goals.filter((g) => g.priority === 1).length;
+  const totalTargetAmount = useMemo(() => goals.reduce((sum, goal) => sum + goal.targetAmount, 0), [goals]);
+  const highPriorityCount = useMemo(() => goals.filter((g) => g.priority === 1).length, [goals]);
 
   if (loading) {
     return <PageSkeleton />;

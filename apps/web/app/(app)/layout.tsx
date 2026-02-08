@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell } from "@/components/layout/AppShell";
 import CommandPalette from "@/components/CommandPalette";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 export default async function AppLayout({
   children,
@@ -17,7 +18,9 @@ export default async function AppLayout({
   return (
     <AppShell>
       <CommandPalette />
-      {children}
+      <ErrorBoundary>
+        {children}
+      </ErrorBoundary>
     </AppShell>
   );
 }

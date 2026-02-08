@@ -59,7 +59,7 @@ export interface RetirementIncomeResult {
  * @param monthlyBenefitAtFRA - The PIA (Primary Insurance Amount) at full retirement age
  * @param _birthYear - Birth year (unused for now; FRA is 67 for >= 1960)
  */
-export function calculateSSBenefits(
+function calculateSSBenefits(
   monthlyBenefitAtFRA: number,
   _birthYear: number
 ): SSBenefitEstimate[] {
@@ -116,7 +116,7 @@ export function calculateSSBenefits(
  *   2. Traditional 401k / IRA -- ordinary income tax
  *   3. Roth -- tax-free; let it grow the longest
  */
-export function planWithdrawalOrder(
+function planWithdrawalOrder(
   accountTypes: string[]
 ): WithdrawalRecommendation[] {
   const typeConfig: Record<string, { priority: number; rationale: string }> = {
@@ -244,7 +244,7 @@ function isRoth(type: string): boolean {
 /**
  * Year-by-year retirement income projection from retirement age through 95.
  */
-export function projectRetirementIncome(
+function projectRetirementIncome(
   inputs: ProjectionInputs
 ): RetirementYearProjection[] {
   const {

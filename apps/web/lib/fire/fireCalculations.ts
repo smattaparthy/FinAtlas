@@ -1,4 +1,4 @@
-export interface FireInputs {
+interface FireInputs {
   currentNetWorth: number;
   annualIncome: number;
   annualExpenses: number;
@@ -9,7 +9,7 @@ export interface FireInputs {
   inflationRate: number; // decimal e.g. 0.025
 }
 
-export interface FireProjectionPoint {
+interface FireProjectionPoint {
   date: string; // YYYY-MM
   netWorth: number;
   fiNumber: number;

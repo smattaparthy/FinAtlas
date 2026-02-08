@@ -48,95 +48,100 @@ async function verifyScenarioOwnership(userId: string, scenarioId: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const q = req.nextUrl.searchParams.get("q");
+    const scenarioId = req.nextUrl.searchParams.get("scenarioId");
+
+    if (!q || q.length < 2) {
+      return NextResponse.json({ results: [] });
+    }
+
+    if (!scenarioId) {
+      return NextResponse.json(
+        { error: "scenarioId is required" },
+        { status: 400 }
+      );
+    }
+
+    const hasAccess = await verifyScenarioOwnership(user.id, scenarioId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: "Scenario not found" }, { status: 404 });
+    }
+
+    const [incomes, expenses, accounts, loans, goals] = await Promise.all([
+      prisma.income.findMany({
+        where: { scenarioId, name: { contains: q } },
+        take: 3,
+        select: { id: true, name: true, amount: true, frequency: true },
+      }),
+      prisma.expense.findMany({
+        where: { scenarioId, name: { contains: q } },
+        take: 3,
+        select: { id: true, name: true, amount: true, category: true },
+      }),
+      prisma.account.findMany({
+        where: { scenarioId, name: { contains: q } },
+        take: 3,
+        select: { id: true, name: true, type: true, balance: true },
+      }),
+      prisma.loan.findMany({
+        where: { scenarioId, name: { contains: q } },
+        take: 3,
+        select: { id: true, name: true, currentBalance: true },
+      }),
+      prisma.goal.findMany({
+        where: { scenarioId, name: { contains: q } },
+        take: 3,
+        select: { id: true, name: true, type: true, targetAmount: true },
+      }),
+    ]);
+
+    const results: SearchResult[] = [
+      ...incomes.map((i) => ({
+        id: i.id,
+        type: "income" as const,
+        name: i.name,
+        subtitle: `${formatCurrency(i.amount)} / ${formatFrequency(i.frequency)}`,
+        href: "/incomes",
+      })),
+      ...expenses.map((e) => ({
+        id: e.id,
+        type: "expense" as const,
+        name: e.name,
+        subtitle: `${e.category || "Uncategorized"} \u00b7 ${formatCurrency(e.amount)}`,
+        href: "/expenses",
+      })),
+      ...accounts.map((a) => ({
+        id: a.id,
+        type: "account" as const,
+        name: a.name,
+        subtitle: `${formatAccountType(a.type)} \u00b7 ${formatCurrency(a.balance)}`,
+        href: "/investments",
+      })),
+      ...loans.map((l) => ({
+        id: l.id,
+        type: "loan" as const,
+        name: l.name,
+        subtitle: `${formatCurrency(l.currentBalance)} remaining`,
+        href: "/loans",
+      })),
+      ...goals.map((g) => ({
+        id: g.id,
+        type: "goal" as const,
+        name: g.name,
+        subtitle: `${formatGoalType(g.type)} \u00b7 ${formatCurrency(g.targetAmount)} target`,
+        href: "/goals",
+      })),
+    ];
+
+    return NextResponse.json({ results: results.slice(0, 15) });
+  } catch (error) {
+    console.error("Error performing search:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const q = req.nextUrl.searchParams.get("q");
-  const scenarioId = req.nextUrl.searchParams.get("scenarioId");
-
-  if (!q || q.length < 2) {
-    return NextResponse.json({ results: [] });
-  }
-
-  if (!scenarioId) {
-    return NextResponse.json(
-      { error: "scenarioId is required" },
-      { status: 400 }
-    );
-  }
-
-  const hasAccess = await verifyScenarioOwnership(user.id, scenarioId);
-  if (!hasAccess) {
-    return NextResponse.json({ error: "Scenario not found" }, { status: 404 });
-  }
-
-  const [incomes, expenses, accounts, loans, goals] = await Promise.all([
-    prisma.income.findMany({
-      where: { scenarioId, name: { contains: q } },
-      take: 3,
-      select: { id: true, name: true, amount: true, frequency: true },
-    }),
-    prisma.expense.findMany({
-      where: { scenarioId, name: { contains: q } },
-      take: 3,
-      select: { id: true, name: true, amount: true, category: true },
-    }),
-    prisma.account.findMany({
-      where: { scenarioId, name: { contains: q } },
-      take: 3,
-      select: { id: true, name: true, type: true, balance: true },
-    }),
-    prisma.loan.findMany({
-      where: { scenarioId, name: { contains: q } },
-      take: 3,
-      select: { id: true, name: true, currentBalance: true },
-    }),
-    prisma.goal.findMany({
-      where: { scenarioId, name: { contains: q } },
-      take: 3,
-      select: { id: true, name: true, type: true, targetAmount: true },
-    }),
-  ]);
-
-  const results: SearchResult[] = [
-    ...incomes.map((i) => ({
-      id: i.id,
-      type: "income" as const,
-      name: i.name,
-      subtitle: `${formatCurrency(i.amount)} / ${formatFrequency(i.frequency)}`,
-      href: "/incomes",
-    })),
-    ...expenses.map((e) => ({
-      id: e.id,
-      type: "expense" as const,
-      name: e.name,
-      subtitle: `${e.category || "Uncategorized"} \u00b7 ${formatCurrency(e.amount)}`,
-      href: "/expenses",
-    })),
-    ...accounts.map((a) => ({
-      id: a.id,
-      type: "account" as const,
-      name: a.name,
-      subtitle: `${formatAccountType(a.type)} \u00b7 ${formatCurrency(a.balance)}`,
-      href: "/investments",
-    })),
-    ...loans.map((l) => ({
-      id: l.id,
-      type: "loan" as const,
-      name: l.name,
-      subtitle: `${formatCurrency(l.currentBalance)} remaining`,
-      href: "/loans",
-    })),
-    ...goals.map((g) => ({
-      id: g.id,
-      type: "goal" as const,
-      name: g.name,
-      subtitle: `${formatGoalType(g.type)} \u00b7 ${formatCurrency(g.targetAmount)} target`,
-      href: "/goals",
-    })),
-  ];
-
-  return NextResponse.json({ results: results.slice(0, 15) });
 }

@@ -1,4 +1,4 @@
-export interface LifeInsuranceInput {
+interface LifeInsuranceInput {
   annualIncome: number;
   yearsToReplace: number;
   outstandingDebts: number;
@@ -22,7 +22,7 @@ export interface LifeInsuranceResult {
   breakdown: Array<{ label: string; amount: number; color: string }>;
 }
 
-export interface DisabilityInsuranceInput {
+interface DisabilityInsuranceInput {
   annualIncome: number;
   monthlyEssentialExpenses: number;
   employerCoveragePct: number;

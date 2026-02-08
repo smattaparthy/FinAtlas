@@ -13,7 +13,7 @@ export interface AmortizationRow {
   cumulativePrincipal: number;
 }
 
-export interface AmortizationResult {
+interface AmortizationResult {
   schedule: AmortizationRow[];
   totalPayments: number;
   totalInterest: number;

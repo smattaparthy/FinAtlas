@@ -50,123 +50,138 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const loan = await getLoanWithOwnerCheck(id, user.id);
+
+    if (!loan) {
+      return NextResponse.json({ error: "Loan not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ loan });
+  } catch (error) {
+    console.error("Error fetching loan:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const { id } = await params;
-  const loan = await getLoanWithOwnerCheck(id, user.id);
-
-  if (!loan) {
-    return NextResponse.json({ error: "Loan not found" }, { status: 404 });
-  }
-
-  return NextResponse.json({ loan });
 }
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { id } = await params;
-  const existingLoan = await getLoanWithOwnerCheck(id, user.id);
-
-  if (!existingLoan) {
-    return NextResponse.json({ error: "Loan not found" }, { status: 404 });
-  }
-
-  let body;
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const parsed = updateLoanSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
+    const { id } = await params;
+    const existingLoan = await getLoanWithOwnerCheck(id, user.id);
 
-  const data = parsed.data;
+    if (!existingLoan) {
+      return NextResponse.json({ error: "Loan not found" }, { status: 404 });
+    }
 
-  // If memberId provided, verify member belongs to the household
-  if (data.memberId !== undefined && data.memberId !== null) {
-    const member = await prisma.householdMember.findFirst({
-      where: {
-        id: data.memberId,
-        householdId: existingLoan.scenario.householdId,
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
+
+    const parsed = updateLoanSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const data = parsed.data;
+
+    // If memberId provided, verify member belongs to the household
+    if (data.memberId !== undefined && data.memberId !== null) {
+      const member = await prisma.householdMember.findFirst({
+        where: {
+          id: data.memberId,
+          householdId: existingLoan.scenario.householdId,
+        },
+      });
+      if (!member) {
+        return NextResponse.json({ error: "Member not found in household" }, { status: 404 });
+      }
+    }
+
+    // Calculate monthly payment if principal, rate, or term changed but monthlyPayment not provided
+    let monthlyPayment = data.monthlyPayment;
+    if (monthlyPayment === undefined) {
+      const principal = data.principal ?? existingLoan.principal;
+      const interestRate = data.interestRate ?? existingLoan.interestRate;
+      const termMonths = data.termMonths ?? existingLoan.termMonths;
+
+      // Only recalculate if any of these values changed
+      if (data.principal !== undefined || data.interestRate !== undefined || data.termMonths !== undefined) {
+        monthlyPayment = calculateMonthlyPayment(principal, interestRate, termMonths);
+      }
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (data.memberId !== undefined) updateData.memberId = data.memberId;
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.type !== undefined) updateData.type = data.type;
+    if (data.principal !== undefined) updateData.principal = data.principal;
+    if (data.currentBalance !== undefined) updateData.currentBalance = data.currentBalance;
+    if (data.interestRate !== undefined) updateData.interestRate = data.interestRate;
+    if (monthlyPayment !== undefined) updateData.monthlyPayment = monthlyPayment;
+    if (data.startDate !== undefined) updateData.startDate = new Date(data.startDate);
+    if (data.termMonths !== undefined) updateData.termMonths = data.termMonths;
+
+    const loan = await prisma.loan.update({
+      where: { id },
+      data: updateData,
+      include: {
+        member: {
+          select: { id: true, name: true },
+        },
       },
     });
-    if (!member) {
-      return NextResponse.json({ error: "Member not found in household" }, { status: 404 });
-    }
+
+    return NextResponse.json({ loan });
+  } catch (error) {
+    console.error("Error updating loan:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  // Calculate monthly payment if principal, rate, or term changed but monthlyPayment not provided
-  let monthlyPayment = data.monthlyPayment;
-  if (monthlyPayment === undefined) {
-    const principal = data.principal ?? existingLoan.principal;
-    const interestRate = data.interestRate ?? existingLoan.interestRate;
-    const termMonths = data.termMonths ?? existingLoan.termMonths;
-
-    // Only recalculate if any of these values changed
-    if (data.principal !== undefined || data.interestRate !== undefined || data.termMonths !== undefined) {
-      monthlyPayment = calculateMonthlyPayment(principal, interestRate, termMonths);
-    }
-  }
-
-  const updateData: Record<string, unknown> = {};
-  if (data.memberId !== undefined) updateData.memberId = data.memberId;
-  if (data.name !== undefined) updateData.name = data.name;
-  if (data.type !== undefined) updateData.type = data.type;
-  if (data.principal !== undefined) updateData.principal = data.principal;
-  if (data.currentBalance !== undefined) updateData.currentBalance = data.currentBalance;
-  if (data.interestRate !== undefined) updateData.interestRate = data.interestRate;
-  if (monthlyPayment !== undefined) updateData.monthlyPayment = monthlyPayment;
-  if (data.startDate !== undefined) updateData.startDate = new Date(data.startDate);
-  if (data.termMonths !== undefined) updateData.termMonths = data.termMonths;
-
-  const loan = await prisma.loan.update({
-    where: { id },
-    data: updateData,
-    include: {
-      member: {
-        select: { id: true, name: true },
-      },
-    },
-  });
-
-  return NextResponse.json({ loan });
 }
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const existingLoan = await getLoanWithOwnerCheck(id, user.id);
+
+    if (!existingLoan) {
+      return NextResponse.json({ error: "Loan not found" }, { status: 404 });
+    }
+
+    await prisma.loan.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting loan:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const { id } = await params;
-  const existingLoan = await getLoanWithOwnerCheck(id, user.id);
-
-  if (!existingLoan) {
-    return NextResponse.json({ error: "Loan not found" }, { status: 404 });
-  }
-
-  await prisma.loan.delete({
-    where: { id },
-  });
-
-  return NextResponse.json({ success: true });
 }

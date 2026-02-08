@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { encrypt, decrypt } from "@/lib/auth/encryption";
+
+/**
+ * Safely decrypt an API key, falling back to raw value for legacy unencrypted keys.
+ */
+function safeDecrypt(value: string): string {
+  try {
+    return decrypt(value);
+  } catch {
+    console.warn("Failed to decrypt API key - may be a legacy unencrypted value");
+    return value;
+  }
+}
 
 // GET: Retrieve masked API key status
 export async function GET() {
@@ -16,9 +29,12 @@ export async function GET() {
     });
 
     const hasKey = !!dbUser?.anthropicApiKey;
-    const maskedKey = hasKey && dbUser.anthropicApiKey
-      ? `sk-...${dbUser.anthropicApiKey.slice(-4)}`
-      : null;
+    let maskedKey: string | null = null;
+
+    if (hasKey && dbUser.anthropicApiKey) {
+      const decryptedKey = safeDecrypt(dbUser.anthropicApiKey);
+      maskedKey = `sk-...${decryptedKey.slice(-4)}`;
+    }
 
     return NextResponse.json({ hasKey, maskedKey });
   } catch (error) {
@@ -51,9 +67,17 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    let encryptedKey: string;
+    try {
+      encryptedKey = encrypt(apiKey);
+    } catch (error) {
+      console.error("Encryption failed:", error);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
+
     await prisma.user.update({
       where: { id: user.id },
-      data: { anthropicApiKey: apiKey },
+      data: { anthropicApiKey: encryptedKey },
     });
 
     const maskedKey = `sk-...${apiKey.slice(-4)}`;

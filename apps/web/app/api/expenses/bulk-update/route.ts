@@ -12,49 +12,56 @@ const bulkUpdateSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json().catch(() => null);
+    if (!body) {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+
+    const parsed = bulkUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+
+    const { ids, scenarioId, updates } = parsed.data;
+
+    // Verify user owns the scenario's household
+    const scenario = await prisma.scenario.findUnique({
+      where: { id: scenarioId },
+      include: { household: true },
+    });
+
+    if (!scenario) {
+      return NextResponse.json({ error: "Scenario not found" }, { status: 404 });
+    }
+
+    if (scenario.household.ownerUserId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      return tx.expense.updateMany({
+        where: {
+          id: { in: ids },
+          scenarioId,
+        },
+        data: {
+          ...(updates.category !== undefined && { category: updates.category }),
+        },
+      });
+    });
+
+    return NextResponse.json({ updatedCount: result.count });
+  } catch (error) {
+    console.error("Error bulk updating expenses:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const body = await req.json().catch(() => null);
-  if (!body) {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-  }
-
-  const parsed = bulkUpdateSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
-      { status: 400 }
-    );
-  }
-
-  const { ids, scenarioId, updates } = parsed.data;
-
-  // Verify user owns the scenario's household
-  const scenario = await prisma.scenario.findUnique({
-    where: { id: scenarioId },
-    include: { household: true },
-  });
-
-  if (!scenario) {
-    return NextResponse.json({ error: "Scenario not found" }, { status: 404 });
-  }
-
-  if (scenario.household.ownerUserId !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const result = await prisma.expense.updateMany({
-    where: {
-      id: { in: ids },
-      scenarioId,
-    },
-    data: {
-      ...(updates.category !== undefined && { category: updates.category }),
-    },
-  });
-
-  return NextResponse.json({ updatedCount: result.count });
 }

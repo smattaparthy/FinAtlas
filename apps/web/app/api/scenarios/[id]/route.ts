@@ -6,27 +6,32 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const scenario = await prisma.scenario.findFirst({
+      where: { id: params.id, household: { ownerUserId: user.id } },
+    });
+
+    if (!scenario) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    if (scenario.isBaseline) {
+      return NextResponse.json(
+        { error: "Cannot delete baseline scenario" },
+        { status: 400 }
+      );
+    }
+
+    await prisma.scenario.delete({ where: { id: params.id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting scenario:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const scenario = await prisma.scenario.findFirst({
-    where: { id: params.id, household: { ownerUserId: user.id } },
-  });
-
-  if (!scenario) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  if (scenario.isBaseline) {
-    return NextResponse.json(
-      { error: "Cannot delete baseline scenario" },
-      { status: 400 }
-    );
-  }
-
-  await prisma.scenario.delete({ where: { id: params.id } });
-
-  return NextResponse.json({ success: true });
 }

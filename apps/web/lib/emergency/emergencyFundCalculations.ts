@@ -1,4 +1,4 @@
-export interface EmergencyFundInput {
+interface EmergencyFundInput {
   monthlyEssentialExpenses: number;
   targetMonths: number;
   currentLiquidAssets: number;

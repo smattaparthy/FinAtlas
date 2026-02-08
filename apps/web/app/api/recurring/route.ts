@@ -189,139 +189,144 @@ function getOccurrencesInNext30Days(
 }
 
 export async function GET(req: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const scenarioId = req.nextUrl.searchParams.get("scenarioId");
-  if (!scenarioId) {
-    return NextResponse.json({ error: "scenarioId required" }, { status: 400 });
-  }
+    const scenarioId = req.nextUrl.searchParams.get("scenarioId");
+    if (!scenarioId) {
+      return NextResponse.json({ error: "scenarioId required" }, { status: 400 });
+    }
 
-  const scenario = await prisma.scenario.findFirst({
-    where: { id: scenarioId, household: { ownerUserId: user.id } },
-  });
-  if (!scenario) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  const [incomes, expenses] = await Promise.all([
-    prisma.income.findMany({
-      where: { scenarioId, NOT: { frequency: "ONE_TIME" } },
-    }),
-    prisma.expense.findMany({
-      where: { scenarioId, NOT: { frequency: "ONE_TIME" } },
-    }),
-  ]);
-
-  type RecurringItem = {
-    id: string;
-    name: string;
-    type: "INCOME" | "EXPENSE";
-    amount: number;
-    frequency: Frequency;
-    monthlyEquivalent: number;
-    nextOccurrence: string | null;
-    category: string | null;
-    startDate: string;
-    endDate: string | null;
-    editUrl: string;
-  };
-
-  const items: RecurringItem[] = [];
-
-  for (const income of incomes) {
-    const freq = income.frequency as Frequency;
-    items.push({
-      id: income.id,
-      name: income.name,
-      type: "INCOME",
-      amount: income.amount,
-      frequency: freq,
-      monthlyEquivalent: toMonthlyEquivalent(income.amount, freq),
-      nextOccurrence: computeNextOccurrence(income.startDate, income.endDate, freq),
-      category: null,
-      startDate: income.startDate.toISOString().split("T")[0],
-      endDate: income.endDate ? income.endDate.toISOString().split("T")[0] : null,
-      editUrl: `/incomes/${income.id}/edit`,
+    const scenario = await prisma.scenario.findFirst({
+      where: { id: scenarioId, household: { ownerUserId: user.id } },
     });
-  }
+    if (!scenario) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
-  for (const expense of expenses) {
-    const freq = expense.frequency as Frequency;
-    items.push({
-      id: expense.id,
-      name: expense.name,
-      type: "EXPENSE",
-      amount: expense.amount,
-      frequency: freq,
-      monthlyEquivalent: toMonthlyEquivalent(expense.amount, freq),
-      nextOccurrence: computeNextOccurrence(expense.startDate, expense.endDate, freq),
-      category: expense.category,
-      startDate: expense.startDate.toISOString().split("T")[0],
-      endDate: expense.endDate ? expense.endDate.toISOString().split("T")[0] : null,
-      editUrl: `/expenses/${expense.id}/edit`,
-    });
-  }
+    const [incomes, expenses] = await Promise.all([
+      prisma.income.findMany({
+        where: { scenarioId, NOT: { frequency: "ONE_TIME" } },
+      }),
+      prisma.expense.findMany({
+        where: { scenarioId, NOT: { frequency: "ONE_TIME" } },
+      }),
+    ]);
 
-  // Compute summary
-  const totalMonthlyInflows = items
-    .filter((i) => i.type === "INCOME")
-    .reduce((sum, i) => sum + i.monthlyEquivalent, 0);
+    type RecurringItem = {
+      id: string;
+      name: string;
+      type: "INCOME" | "EXPENSE";
+      amount: number;
+      frequency: Frequency;
+      monthlyEquivalent: number;
+      nextOccurrence: string | null;
+      category: string | null;
+      startDate: string;
+      endDate: string | null;
+      editUrl: string;
+    };
 
-  const totalMonthlyOutflows = items
-    .filter((i) => i.type === "EXPENSE")
-    .reduce((sum, i) => sum + i.monthlyEquivalent, 0);
+    const items: RecurringItem[] = [];
 
-  const netMonthly = totalMonthlyInflows - totalMonthlyOutflows;
-
-  // Compute upcoming 30-day events
-  type UpcomingEvent = {
-    date: string;
-    name: string;
-    amount: number;
-    type: "INCOME" | "EXPENSE";
-  };
-
-  const upcoming: UpcomingEvent[] = [];
-
-  for (const income of incomes) {
-    const freq = income.frequency as Frequency;
-    const occurrences = getOccurrencesInNext30Days(income.startDate, income.endDate, freq);
-    for (const occ of occurrences) {
-      upcoming.push({
-        date: occ.toISOString().split("T")[0],
+    for (const income of incomes) {
+      const freq = income.frequency as Frequency;
+      items.push({
+        id: income.id,
         name: income.name,
-        amount: income.amount,
         type: "INCOME",
+        amount: income.amount,
+        frequency: freq,
+        monthlyEquivalent: toMonthlyEquivalent(income.amount, freq),
+        nextOccurrence: computeNextOccurrence(income.startDate, income.endDate, freq),
+        category: null,
+        startDate: income.startDate.toISOString().split("T")[0],
+        endDate: income.endDate ? income.endDate.toISOString().split("T")[0] : null,
+        editUrl: `/incomes/${income.id}/edit`,
       });
     }
-  }
 
-  for (const expense of expenses) {
-    const freq = expense.frequency as Frequency;
-    const occurrences = getOccurrencesInNext30Days(expense.startDate, expense.endDate, freq);
-    for (const occ of occurrences) {
-      upcoming.push({
-        date: occ.toISOString().split("T")[0],
+    for (const expense of expenses) {
+      const freq = expense.frequency as Frequency;
+      items.push({
+        id: expense.id,
         name: expense.name,
-        amount: expense.amount,
         type: "EXPENSE",
+        amount: expense.amount,
+        frequency: freq,
+        monthlyEquivalent: toMonthlyEquivalent(expense.amount, freq),
+        nextOccurrence: computeNextOccurrence(expense.startDate, expense.endDate, freq),
+        category: expense.category,
+        startDate: expense.startDate.toISOString().split("T")[0],
+        endDate: expense.endDate ? expense.endDate.toISOString().split("T")[0] : null,
+        editUrl: `/expenses/${expense.id}/edit`,
       });
     }
+
+    // Compute summary
+    const totalMonthlyInflows = items
+      .filter((i) => i.type === "INCOME")
+      .reduce((sum, i) => sum + i.monthlyEquivalent, 0);
+
+    const totalMonthlyOutflows = items
+      .filter((i) => i.type === "EXPENSE")
+      .reduce((sum, i) => sum + i.monthlyEquivalent, 0);
+
+    const netMonthly = totalMonthlyInflows - totalMonthlyOutflows;
+
+    // Compute upcoming 30-day events
+    type UpcomingEvent = {
+      date: string;
+      name: string;
+      amount: number;
+      type: "INCOME" | "EXPENSE";
+    };
+
+    const upcoming: UpcomingEvent[] = [];
+
+    for (const income of incomes) {
+      const freq = income.frequency as Frequency;
+      const occurrences = getOccurrencesInNext30Days(income.startDate, income.endDate, freq);
+      for (const occ of occurrences) {
+        upcoming.push({
+          date: occ.toISOString().split("T")[0],
+          name: income.name,
+          amount: income.amount,
+          type: "INCOME",
+        });
+      }
+    }
+
+    for (const expense of expenses) {
+      const freq = expense.frequency as Frequency;
+      const occurrences = getOccurrencesInNext30Days(expense.startDate, expense.endDate, freq);
+      for (const occ of occurrences) {
+        upcoming.push({
+          date: occ.toISOString().split("T")[0],
+          name: expense.name,
+          amount: expense.amount,
+          type: "EXPENSE",
+        });
+      }
+    }
+
+    // Sort upcoming by date
+    upcoming.sort((a, b) => a.date.localeCompare(b.date));
+
+    return NextResponse.json({
+      items,
+      summary: {
+        totalMonthlyInflows,
+        totalMonthlyOutflows,
+        netMonthly,
+      },
+      upcoming,
+    });
+  } catch (error) {
+    console.error("Error fetching recurring items:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  // Sort upcoming by date
-  upcoming.sort((a, b) => a.date.localeCompare(b.date));
-
-  return NextResponse.json({
-    items,
-    summary: {
-      totalMonthlyInflows,
-      totalMonthlyOutflows,
-      netMonthly,
-    },
-    upcoming,
-  });
 }

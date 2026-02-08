@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import NetWorthChart from "@/components/charts/NetWorthChart";
 import { formatCompactCurrency } from "@/lib/format";
+import { FREQUENCY_MULTIPLIERS, DEFAULT_TAX_RATE, DEFAULT_PROJECTION_GROWTH_RATE, DEFAULT_CHART_PROJECTION_YEARS } from "@/lib/constants";
 
 interface ProjectionChartProps {
   scenarioId: string;
@@ -49,34 +50,26 @@ export default function ProjectionChart({ scenarioId }: ProjectionChartProps) {
         );
 
         // Annualize income and expenses
-        const frequencyMultipliers: Record<string, number> = {
-          ANNUAL: 1,
-          MONTHLY: 12,
-          BIWEEKLY: 26,
-          WEEKLY: 52,
-          ONE_TIME: 0,
-        };
-
         const annualIncome = incomesData.incomes.reduce(
           (sum: number, inc: { amount: number; frequency: string }) =>
-            sum + inc.amount * (frequencyMultipliers[inc.frequency] ?? 1),
+            sum + inc.amount * (FREQUENCY_MULTIPLIERS[inc.frequency] ?? 1),
           0
         );
 
         const annualExpenses = expensesData.expenses.reduce(
           (sum: number, exp: { amount: number; frequency: string }) =>
-            sum + exp.amount * (frequencyMultipliers[exp.frequency] ?? 1),
+            sum + exp.amount * (FREQUENCY_MULTIPLIERS[exp.frequency] ?? 1),
           0
         );
 
         const annualSavings = annualIncome - annualExpenses;
-        const estimatedTaxRate = 0.25;
+        const estimatedTaxRate = DEFAULT_TAX_RATE;
         const netAnnualSavings = annualSavings * (1 - estimatedTaxRate);
-        const growthRate = 0.06; // 6% investment growth
+        const growthRate = DEFAULT_PROJECTION_GROWTH_RATE;
 
-        // Project 10 years
+        // Project forward
         const currentDate = new Date();
-        const projectionYears = 10;
+        const projectionYears = DEFAULT_CHART_PROJECTION_YEARS;
         const projection: ProjectionData[] = [];
 
         let netWorth = initialNetWorth;

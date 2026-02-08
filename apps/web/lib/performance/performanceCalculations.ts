@@ -1,4 +1,4 @@
-export interface HoldingPerformance {
+interface HoldingPerformance {
   symbol: string;
   name: string;
   shares: number;

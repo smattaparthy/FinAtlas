@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { z } from "zod";
+
+const createMemberSchema = z.object({
+  householdId: z.string().min(1),
+  name: z.string().min(1).max(100),
+  birthDate: z.string().optional().nullable(),
+  retirementAge: z.number().int().min(40).max(100).optional().nullable(),
+  roleTag: z.string().optional().nullable(),
+});
 
 // GET /api/members?householdId=xxx - List all members for a household
 export async function GET(req: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const householdId = searchParams.get("householdId");
 
@@ -47,37 +56,41 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ members: household.members });
-  } catch (error: any) {
-    console.error("Failed to fetch members:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch members" },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error("Error fetching members:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 // POST /api/members - Create a new member
 export async function POST(req: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
-    const body = await req.json();
-    const { householdId, name, birthDate, retirementAge, roleTag } = body;
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!householdId || !name) {
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const parsed = createMemberSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "householdId and name are required" },
+        { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
+    const data = parsed.data;
+
     // Verify user owns this household
     const household = await prisma.household.findFirst({
       where: {
-        id: householdId,
+        id: data.householdId,
         ownerUserId: user.id,
       },
     });
@@ -88,20 +101,17 @@ export async function POST(req: NextRequest) {
 
     const member = await prisma.householdMember.create({
       data: {
-        householdId,
-        name,
-        birthDate: birthDate ? new Date(birthDate) : null,
-        retirementAge: retirementAge ? parseInt(retirementAge) : null,
-        roleTag: roleTag || null,
+        householdId: data.householdId,
+        name: data.name,
+        birthDate: data.birthDate ? new Date(data.birthDate) : null,
+        retirementAge: data.retirementAge ?? null,
+        roleTag: data.roleTag || null,
       },
     });
 
     return NextResponse.json(member);
-  } catch (error: any) {
-    console.error("Failed to create member:", error);
-    return NextResponse.json(
-      { error: "Failed to create member" },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error("Error creating member:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

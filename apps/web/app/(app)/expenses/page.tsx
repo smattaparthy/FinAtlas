@@ -93,11 +93,13 @@ export default function ExpensesPage() {
   useEffect(() => {
     if (!selectedScenarioId) return;
 
+    const abortController = new AbortController();
+
     async function fetchExpenses() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/expenses?scenarioId=${selectedScenarioId}`);
+        const res = await fetch(`/api/expenses?scenarioId=${selectedScenarioId}`, { signal: abortController.signal });
         if (!res.ok) {
           throw new Error("Failed to fetch expenses");
         }
@@ -107,12 +109,14 @@ export default function ExpensesPage() {
         const categories = new Set(data.expenses.map((e: Expense) => e.category || "Uncategorized"));
         setExpandedCategories(categories as Set<string>);
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load expenses");
       } finally {
         setLoading(false);
       }
     }
     fetchExpenses();
+    return () => abortController.abort();
   }, [selectedScenarioId]);
 
   async function handleDelete(expenseId: string) {
@@ -455,6 +459,7 @@ export default function ExpensesPage() {
                 {/* Category Header */}
                 <button
                   onClick={() => toggleCategory(category)}
+                  aria-expanded={isExpanded}
                   className="w-full px-4 py-3 flex items-center justify-between hover:bg-zinc-900/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
@@ -465,7 +470,7 @@ export default function ExpensesPage() {
                     >
                       {category}
                     </span>
-                    <span className="text-sm text-zinc-400">{categoryExpenses.length} expenses</span>
+                    <span className="text-sm text-zinc-300">{categoryExpenses.length} expenses</span>
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="font-medium">{formatCurrency(categoryTotal)}/mo</span>
@@ -497,6 +502,7 @@ export default function ExpensesPage() {
                                   return next;
                                 });
                               }}
+                              aria-label="Select all expenses"
                               className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500"
                             />
                           </th>
@@ -527,7 +533,7 @@ export default function ExpensesPage() {
                               </Link>
                             </td>
                             <td className="px-4 py-3 text-right">{formatCurrency(expense.amount)}</td>
-                            <td className="px-4 py-3 text-center text-sm text-zinc-400">
+                            <td className="px-4 py-3 text-center text-sm text-zinc-300">
                               {FREQUENCY_LABELS[expense.frequency] || expense.frequency}
                             </td>
                             <td className="px-4 py-3 text-center">
