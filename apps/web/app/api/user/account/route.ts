@@ -24,7 +24,7 @@ export async function DELETE(request: Request) {
     await prisma.user.delete({ where: { id: user.id } });
 
     // 4. Clear session cookie
-    cookies().set("session", "", { maxAge: 0, path: "/" });
+    (await cookies()).set("session", "", { maxAge: 0, path: "/" });
 
     // 5. Return success
     return NextResponse.json({ success: true });

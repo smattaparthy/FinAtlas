@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useScenario } from "@/contexts/ScenarioContext";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { PageSkeleton } from "@/components/ui/Skeleton";
@@ -222,10 +222,9 @@ export default function InvestmentPerformancePage() {
             </thead>
             <tbody>
               {performance.accounts.map((account) => (
-                <>
+                <React.Fragment key={account.id}>
                   {/* Account Row */}
                   <tr
-                    key={account.id}
                     className="cursor-pointer border-b border-zinc-800/50 hover:bg-zinc-800/20"
                     onClick={() => toggleAccount(account.id)}
                   >
@@ -279,7 +278,7 @@ export default function InvestmentPerformancePage() {
                         </td>
                       </tr>
                     ))}
-                </>
+                </React.Fragment>
               ))}
             </tbody>
           </table>

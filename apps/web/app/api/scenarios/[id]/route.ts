@@ -4,16 +4,17 @@ import { prisma } from "@/lib/db/prisma";
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const scenario = await prisma.scenario.findFirst({
-      where: { id: params.id, household: { ownerUserId: user.id } },
+      where: { id, household: { ownerUserId: user.id } },
     });
 
     if (!scenario) {
@@ -27,7 +28,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.scenario.delete({ where: { id: params.id } });
+    await prisma.scenario.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {

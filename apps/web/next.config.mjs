@@ -2,9 +2,7 @@
 const nextConfig = {
   output: "standalone",
   transpilePackages: ["@finatlas/engine", "@finatlas/schemas"],
-  experimental: {
-    serverComponentsExternalPackages: ["argon2", "@react-pdf/renderer"],
-  },
+  serverExternalPackages: ["argon2", "@react-pdf/renderer"],
   async headers() {
     return [
       {

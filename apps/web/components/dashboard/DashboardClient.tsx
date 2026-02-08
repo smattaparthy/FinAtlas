@@ -191,27 +191,7 @@ export function DashboardClient({ userName }: { userName: string }) {
     return () => abortController.abort();
   }, [selectedScenarioId]);
 
-  if (scenarioLoading || (loading && selectedScenarioId)) {
-    return <DashboardSkeleton />;
-  }
-
-  if (scenarioError || error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="text-red-400">{scenarioError || error}</div>
-      </div>
-    );
-  }
-
-  if (!selectedScenarioId) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="text-zinc-400">No scenario selected. Please create a household and scenario first.</div>
-      </div>
-    );
-  }
-
-  // Build a map of widget ID -> rendered JSX
+  // Build a map of widget ID -> rendered JSX (must be before early returns per Rules of Hooks)
   const widgetRenderers: Record<string, React.ReactNode> = useMemo(() => ({
     "summary-cards": data ? (
       <div key="summary-cards" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -291,6 +271,26 @@ export function DashboardClient({ userName }: { userName: string }) {
     .filter((w) => w.enabled && widgetRenderers[w.id] !== undefined)
     .map((w) => widgetRenderers[w.id])
     .filter(Boolean), [widgetConfig, widgetRenderers]);
+
+  if (scenarioLoading || (loading && selectedScenarioId)) {
+    return <DashboardSkeleton />;
+  }
+
+  if (scenarioError || error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <div className="text-red-400">{scenarioError || error}</div>
+      </div>
+    );
+  }
+
+  if (!selectedScenarioId) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <div className="text-zinc-400">No scenario selected. Please create a household and scenario first.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
