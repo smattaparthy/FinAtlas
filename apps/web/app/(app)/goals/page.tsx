@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useScenario } from "@/contexts/ScenarioContext";
+import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { PageSkeleton } from "@/components/ui/Skeleton";
+import EmptyState from "@/components/ui/EmptyState";
+import { formatCurrency } from "@/lib/format";
 
 type Goal = {
   id: string;
@@ -43,15 +48,6 @@ const PRIORITY_LABELS: Record<number, string> = {
 };
 
 type SortOption = "priority" | "targetDate" | "amount";
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
 
 function getTimeUntil(targetDate: string | null): string {
   if (!targetDate) return "No target date";
@@ -100,11 +96,13 @@ function ProgressBar({ progress }: { progress: number }) {
 
 export default function GoalsPage() {
   const { selectedScenarioId, isLoading: scenarioLoading, error: scenarioError } = useScenario();
+  const toast = useToast();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("priority");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Fetch goals
   useEffect(() => {
@@ -129,8 +127,7 @@ export default function GoalsPage() {
   }, [selectedScenarioId]);
 
   async function handleDelete(goalId: string) {
-    if (!confirm("Are you sure you want to delete this goal?")) return;
-
+    setConfirmDeleteId(null);
     setDeleting(goalId);
     try {
       const res = await fetch(`/api/goals/${goalId}`, { method: "DELETE" });
@@ -138,8 +135,9 @@ export default function GoalsPage() {
         throw new Error("Failed to delete goal");
       }
       setGoals(goals.filter((g) => g.id !== goalId));
+      toast.success("Goal deleted");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete goal");
+      toast.error(err instanceof Error ? err.message : "Failed to delete goal");
     } finally {
       setDeleting(null);
     }
@@ -167,11 +165,7 @@ export default function GoalsPage() {
   const highPriorityCount = goals.filter((g) => g.priority === 1).length;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-zinc-400">Loading goals...</div>
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   if (error) {
@@ -208,7 +202,7 @@ export default function GoalsPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">
             Total Target
           </div>
@@ -216,13 +210,13 @@ export default function GoalsPage() {
             {formatCurrency(totalTargetAmount)}
           </div>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">
             Active Goals
           </div>
           <div className="text-2xl font-semibold mt-1">{goals.length}</div>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">
             High Priority
           </div>
@@ -256,17 +250,26 @@ export default function GoalsPage() {
         </div>
       )}
 
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title="Delete Goal"
+        description="Are you sure you want to delete this goal? This action cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+
       {/* Goals List */}
       {goals.length === 0 ? (
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-12 text-center">
-          <div className="text-zinc-400 mb-4">No goals yet</div>
-          <Link
-            href={`/goals/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
-            className="text-sm text-zinc-50 hover:text-zinc-200 underline"
-          >
-            Add your first goal
-          </Link>
-        </div>
+        <EmptyState
+          icon="🎯"
+          title="No goals yet"
+          description="Start tracking your financial goals"
+          actionLabel="Add your first goal"
+          actionHref={`/goals/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sortedGoals.map((goal) => (
@@ -326,7 +329,7 @@ export default function GoalsPage() {
                   Edit
                 </Link>
                 <button
-                  onClick={() => handleDelete(goal.id)}
+                  onClick={() => setConfirmDeleteId(goal.id)}
                   disabled={deleting === goal.id}
                   className="flex-1 text-center px-3 py-1.5 text-xs text-red-400 hover:text-red-300 border border-zinc-700 rounded-lg hover:border-red-700 transition-colors disabled:opacity-50"
                 >

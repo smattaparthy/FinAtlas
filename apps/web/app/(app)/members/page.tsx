@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 
 interface Member {
   id: string;
@@ -23,6 +26,8 @@ export default function MembersPage() {
     roleTag: "",
   });
   const router = useRouter();
+  const toast = useToast();
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMembers();
@@ -50,7 +55,7 @@ export default function MembersPage() {
       const scenariosData = await scenariosRes.json();
 
       if (!scenariosRes.ok || !scenariosData.scenarios || scenariosData.scenarios.length === 0) {
-        alert("Failed to initialize household. Please refresh the page and try again.");
+        toast.error("Failed to initialize household. Please refresh the page and try again.");
         return;
       }
 
@@ -83,13 +88,12 @@ export default function MembersPage() {
       fetchMembers();
     } catch (error) {
       console.error("Failed to save member:", error);
-      alert("Failed to save member. Please try again.");
+      toast.error("Failed to save member. Please try again.");
     }
   }
 
   async function handleDelete(memberId: string) {
-    if (!confirm("Are you sure you want to delete this member?")) return;
-
+    setConfirmDeleteId(null);
     try {
       const response = await fetch(`/api/members/${memberId}`, {
         method: "DELETE",
@@ -97,10 +101,11 @@ export default function MembersPage() {
 
       if (!response.ok) throw new Error("Failed to delete member");
 
+      toast.success("Member deleted");
       fetchMembers();
     } catch (error) {
       console.error("Failed to delete member:", error);
-      alert("Failed to delete member. Please try again.");
+      toast.error("Failed to delete member. Please try again.");
     }
   }
 
@@ -122,11 +127,7 @@ export default function MembersPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-zinc-500">Loading...</div>
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   return (
@@ -226,6 +227,16 @@ export default function MembersPage() {
         </div>
       )}
 
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title="Delete Member"
+        description="Are you sure you want to delete this member? This action cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+
       {/* Members List */}
       {members.length === 0 ? (
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-12 text-center">
@@ -262,7 +273,7 @@ export default function MembersPage() {
                   Edit
                 </button>
                 <button
-                  onClick={() => handleDelete(member.id)}
+                  onClick={() => setConfirmDeleteId(member.id)}
                   className="px-3 py-1.5 rounded-lg border border-red-900/50 hover:bg-red-900/20 text-red-400 text-sm"
                 >
                   Delete

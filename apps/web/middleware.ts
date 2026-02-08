@@ -7,7 +7,12 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Public routes
-  if (pathname.startsWith("/login") || pathname.startsWith("/api/auth")) {
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/shared") ||
+    pathname.startsWith("/api/shared")
+  ) {
     return NextResponse.next();
   }
 

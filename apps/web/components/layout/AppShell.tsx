@@ -6,6 +6,7 @@ import { HouseholdSelector } from "./HouseholdSelector";
 import { ScenarioSelector } from "./ScenarioSelector";
 import { HouseholdProvider } from "@/contexts/HouseholdContext";
 import { ScenarioProvider } from "@/contexts/ScenarioContext";
+import { ToastProvider } from "@/components/ui/Toast";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -13,6 +14,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <HouseholdProvider>
       <ScenarioProvider>
+        <ToastProvider>
         <div className="min-h-screen bg-zinc-950 text-zinc-50 flex">
           <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -43,6 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </main>
           </div>
         </div>
+        </ToastProvider>
       </ScenarioProvider>
     </HouseholdProvider>
   );

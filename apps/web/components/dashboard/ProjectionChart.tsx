@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import NetWorthChart from "@/components/charts/NetWorthChart";
+import { formatCompactCurrency } from "@/lib/format";
 
 interface ProjectionChartProps {
   scenarioId: string;
@@ -12,8 +13,15 @@ interface ProjectionData {
   v: number;
 }
 
+interface Milestone {
+  date: string;
+  name: string;
+  color: string;
+}
+
 export default function ProjectionChart({ scenarioId }: ProjectionChartProps) {
   const [data, setData] = useState<ProjectionData[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,6 +92,23 @@ export default function ProjectionChart({ scenarioId }: ProjectionChartProps) {
         }
 
         setData(projection);
+
+        // Fetch life events for milestone markers
+        try {
+          const eventsRes = await fetch(`/api/life-events?scenarioId=${scenarioId}`);
+          if (eventsRes.ok) {
+            const eventsData = await eventsRes.json();
+            setMilestones(
+              eventsData.lifeEvents.map((e: { targetDate: string; name: string; color: string }) => ({
+                date: e.targetDate,
+                name: e.name,
+                color: e.color,
+              }))
+            );
+          }
+        } catch {
+          // Milestones are non-critical, don't block chart
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load projection");
       } finally {
@@ -130,24 +155,15 @@ export default function ProjectionChart({ scenarioId }: ProjectionChartProps) {
         </div>
         <div className="text-right">
           <div className="text-lg font-semibold text-emerald-400">
-            +{formatCurrency(growth)}
+            +{formatCompactCurrency(growth)}
           </div>
           <div className="text-xs text-zinc-500">
             +{growthPct.toFixed(0)}% projected growth
           </div>
         </div>
       </div>
-      <NetWorthChart series={data} height={200} />
+      <NetWorthChart series={data} height={200} milestones={milestones} />
     </div>
   );
 }
 
-function formatCurrency(amount: number): string {
-  if (amount >= 1000000) {
-    return `$${(amount / 1000000).toFixed(1)}M`;
-  }
-  if (amount >= 1000) {
-    return `$${(amount / 1000).toFixed(0)}K`;
-  }
-  return `$${amount.toFixed(0)}`;
-}

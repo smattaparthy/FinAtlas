@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useScenario } from "@/contexts/ScenarioContext";
 import type { ProjectionResultDTO } from "@finatlas/engine/src/types";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import NetWorthChart from "@/components/charts/NetWorthChart";
 import CashflowChart from "@/components/charts/CashflowChart";
 import AssetsLiabilitiesChart from "@/components/charts/AssetsLiabilitiesChart";
@@ -53,11 +54,7 @@ export default function ChartsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-zinc-400">Loading projection data...</div>
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   if (error || !projection) {
@@ -95,11 +92,11 @@ export default function ChartsPage() {
 
       {/* Top row: Net Worth and Cashflow */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6 shadow-lg shadow-black/20">
           <h2 className="text-lg font-medium mb-4">Net Worth</h2>
           <NetWorthChart series={projection.series?.netWorth || []} height={300} />
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6 shadow-lg shadow-black/20">
           <h2 className="text-lg font-medium mb-4">Net Cashflow</h2>
           <CashflowChart series={projection.series?.cashflowNet || []} height={300} />
         </div>
@@ -107,7 +104,7 @@ export default function ChartsPage() {
 
       {/* Second row: Assets vs Liabilities and Income vs Expenses */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6 shadow-lg shadow-black/20">
           <h2 className="text-lg font-medium mb-4">Assets vs Liabilities</h2>
           <AssetsLiabilitiesChart
             assetsSeries={projection.series?.assetsTotal || []}
@@ -115,7 +112,7 @@ export default function ChartsPage() {
             height={300}
           />
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6 shadow-lg shadow-black/20">
           <h2 className="text-lg font-medium mb-4">Income vs Expenses</h2>
           <IncomeExpensesChart
             incomeSeries={projection.series?.incomeTotal || []}
@@ -127,7 +124,7 @@ export default function ChartsPage() {
 
       {/* Third row: Savings Rate and Cash Balance */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6 shadow-lg shadow-black/20">
           <h2 className="text-lg font-medium mb-4">Savings Rate (%)</h2>
           <SavingsRateChart
             incomeSeries={projection.series?.incomeTotal || []}
@@ -136,7 +133,7 @@ export default function ChartsPage() {
             height={300}
           />
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6 shadow-lg shadow-black/20">
           <h2 className="text-lg font-medium mb-4">Projected Cash Balance</h2>
           <CashBalanceChart series={projection.series?.cashflowNet || []} height={300} />
         </div>

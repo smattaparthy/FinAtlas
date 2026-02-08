@@ -4,6 +4,9 @@ import "@/styles/globals.css";
 export const metadata: Metadata = {
   title: "FinAtlas",
   description: "Local-only financial planning",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import type { SeriesPoint } from "@finatlas/engine/src/types";
+import { formatAxisDate } from "@/lib/format";
+import ChartTooltip from "./ChartTooltip";
 
 interface SavingsRateChartProps {
   incomeSeries: SeriesPoint[];
@@ -81,67 +83,74 @@ export default function SavingsRateChart({
     );
   }
 
+  const tooltipData = chartData.savingsRateData.map((d) => ({
+    date: d.date,
+    values: [{ label: "Savings Rate", value: d.rate, color: "rgb(139, 92, 246)" }],
+  }));
+
   return (
-    <div className="relative" style={{ height }}>
-      {/* Y-axis labels */}
-      <div className="absolute left-0 top-0 bottom-0 w-16 flex flex-col justify-between text-xs text-zinc-500 py-2">
-        {chartData.ticks.map((tick, i) => (
-          <div key={i} className="text-right pr-2">
-            {tick.value.toFixed(0)}%
-          </div>
-        ))}
-      </div>
-
-      {/* Chart area */}
-      <div className="absolute left-16 right-0 top-0 bottom-6">
-        <svg
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          className="w-full h-full"
-        >
-          {/* Grid lines */}
+    <ChartTooltip data={tooltipData} formatValue={(v) => `${v.toFixed(1)}%`} leftOffset={64}>
+      <div className="relative" style={{ height }}>
+        {/* Y-axis labels */}
+        <div className="absolute left-0 top-0 bottom-0 w-16 flex flex-col justify-between text-xs text-zinc-500 py-2">
           {chartData.ticks.map((tick, i) => (
-            <line
-              key={i}
-              x1="0"
-              y1={tick.y}
-              x2="100"
-              y2={tick.y}
-              stroke="currentColor"
-              strokeWidth="0.3"
-              className="text-zinc-800"
-            />
+            <div key={i} className="text-right pr-2">
+              {tick.value.toFixed(0)}%
+            </div>
           ))}
+        </div>
 
-          {/* Area fill with gradient */}
-          <defs>
-            <linearGradient id="savingsRateGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgb(139, 92, 246)" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="rgb(139, 92, 246)" stopOpacity="0.1" />
-            </linearGradient>
-          </defs>
-          <path
-            d={chartData.areaPath}
-            fill="url(#savingsRateGradient)"
-          />
+        {/* Chart area */}
+        <div className="absolute left-16 right-0 top-0 bottom-6">
+          <svg
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            className="w-full h-full"
+          >
+            {/* Grid lines */}
+            {chartData.ticks.map((tick, i) => (
+              <line
+                key={i}
+                x1="0"
+                y1={tick.y}
+                x2="100"
+                y2={tick.y}
+                stroke="currentColor"
+                strokeWidth="0.3"
+                className="text-zinc-800"
+              />
+            ))}
 
-          {/* Line */}
-          <path
-            d={chartData.linePath}
-            fill="none"
-            stroke="rgb(139, 92, 246)"
-            strokeWidth="2"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
+            {/* Area fill with gradient */}
+            <defs>
+              <linearGradient id="savingsRateGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="rgb(139, 92, 246)" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="rgb(139, 92, 246)" stopOpacity="0.1" />
+              </linearGradient>
+            </defs>
+            <path
+              d={chartData.areaPath}
+              fill="url(#savingsRateGradient)"
+            />
+
+            {/* Line */}
+            <path
+              d={chartData.linePath}
+              fill="none"
+              stroke="rgb(139, 92, 246)"
+              strokeWidth="2"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        </div>
+
+        {/* X-axis labels */}
+        <div className="absolute left-16 right-0 bottom-0 flex justify-between text-xs text-zinc-500">
+          {chartData.savingsRateData.filter((_, i) => i === 0 || i === chartData.savingsRateData.length - 1 || i === Math.floor(chartData.savingsRateData.length / 2)).map((d, i) => (
+            <div key={i}>{formatAxisDate(d.date)}</div>
+          ))}
+        </div>
       </div>
-
-      {/* X-axis labels */}
-      <div className="absolute left-16 right-0 bottom-0 flex justify-between text-xs text-zinc-500">
-        {chartData.savingsRateData.filter((_, i) => i === 0 || i === chartData.savingsRateData.length - 1 || i === Math.floor(chartData.savingsRateData.length / 2)).map((d, i) => (
-          <div key={i}>{new Date(d.date).getFullYear()}-{String(new Date(d.date).getMonth() + 1).padStart(2, '0')}</div>
-        ))}
-      </div>
-    </div>
+    </ChartTooltip>
   );
 }

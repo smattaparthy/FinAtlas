@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useScenario } from "@/contexts/ScenarioContext";
 import CSVImportWizard from "@/components/import/CSVImportWizard";
+import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { PageSkeleton } from "@/components/ui/Skeleton";
+import EmptyState from "@/components/ui/EmptyState";
+import { formatCurrency } from "@/lib/format";
 
 type Income = {
   id: string;
@@ -33,15 +38,6 @@ const GROWTH_RULE_LABELS: Record<string, string> = {
   INFLATION_PLUS: "Inflation+",
 };
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString("en-US", {
     year: "numeric",
@@ -69,11 +65,13 @@ function annualizedAmount(amount: number, frequency: string): number {
 
 export default function IncomesPage() {
   const { selectedScenarioId, isLoading: scenarioLoading, error: scenarioError } = useScenario();
+  const toast = useToast();
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedScenarioId) return;
@@ -98,8 +96,7 @@ export default function IncomesPage() {
   }, [selectedScenarioId]);
 
   async function handleDelete(incomeId: string) {
-    if (!confirm("Are you sure you want to delete this income?")) return;
-
+    setConfirmDeleteId(null);
     setDeleting(incomeId);
     try {
       const res = await fetch(`/api/incomes/${incomeId}`, { method: "DELETE" });
@@ -107,8 +104,9 @@ export default function IncomesPage() {
         throw new Error("Failed to delete income");
       }
       setIncomes(incomes.filter((i) => i.id !== incomeId));
+      toast.success("Income deleted");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete income");
+      toast.error(err instanceof Error ? err.message : "Failed to delete income");
     } finally {
       setDeleting(null);
     }
@@ -136,11 +134,7 @@ export default function IncomesPage() {
     .reduce((sum, income) => sum + annualizedAmount(income.amount, income.frequency), 0);
 
   if (scenarioLoading || (loading && selectedScenarioId)) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-zinc-400">Loading incomes...</div>
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   if (scenarioError || error) {
@@ -211,11 +205,11 @@ export default function IncomesPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">Total Annual Income</div>
           <div className="text-2xl font-semibold mt-1">{formatCurrency(totalAnnualIncome)}</div>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">Taxable Income</div>
           <div className="text-2xl font-semibold mt-1">{formatCurrency(taxableIncome)}</div>
           {totalAnnualIncome > 0 && (
@@ -224,23 +218,31 @@ export default function IncomesPage() {
             </div>
           )}
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">Income Sources</div>
           <div className="text-2xl font-semibold mt-1">{incomes.length}</div>
         </div>
       </div>
 
       {/* Incomes List */}
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title="Delete Income"
+        description="Are you sure you want to delete this income source? This action cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+
       {incomes.length === 0 ? (
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-12 text-center">
-          <div className="text-zinc-400 mb-4">No income sources yet</div>
-          <Link
-            href={`/incomes/new?scenarioId=${selectedScenarioId}`}
-            className="text-sm text-zinc-50 hover:text-zinc-200 underline"
-          >
-            Add your first income source
-          </Link>
-        </div>
+        <EmptyState
+          icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>}
+          title="No income sources yet"
+          description="Add your first income source to start projecting your financial future."
+          actionLabel="Add Income"
+          actionHref={`/incomes/new?scenarioId=${selectedScenarioId}`}
+        />
       ) : (
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
           <table className="w-full">
@@ -313,7 +315,7 @@ export default function IncomesPage() {
                         Edit
                       </Link>
                       <button
-                        onClick={() => handleDelete(income.id)}
+                        onClick={() => setConfirmDeleteId(income.id)}
                         disabled={deleting === income.id}
                         className="px-3 py-1 text-xs text-red-400 hover:text-red-300 border border-zinc-700 rounded-lg hover:border-red-700 transition-colors disabled:opacity-50"
                       >

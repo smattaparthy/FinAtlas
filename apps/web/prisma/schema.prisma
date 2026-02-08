@@ -79,6 +79,8 @@ model Scenario {
   accounts    Account[]
   loans       Loan[]
   goals       Goal[]
+  lifeEvents  LifeEvent[]
+  shareTokens ShareToken[]
   importLogs  ImportLog[]
   cache       EngineResultCache?
 
@@ -290,6 +292,43 @@ model Goal {
 
   scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
 
+  @@index([scenarioId])
+}
+
+// ============== LIFE EVENT ==============
+// LifeEventType values: "BUY_HOUSE", "HAVE_BABY", "RETIRE_EARLY", "CAREER_CHANGE", "CUSTOM"
+
+model LifeEvent {
+  id          String   @id @default(cuid())
+  scenarioId  String
+  name        String
+  type        String   @default("CUSTOM")
+  targetDate  DateTime
+  description String?
+  color       String   @default("#10b981")
+  icon        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@index([scenarioId])
+}
+
+// ============== SHARE TOKEN ==============
+
+model ShareToken {
+  id          String    @id @default(cuid())
+  scenarioId  String
+  token       String    @unique
+  expiresAt   DateTime?
+  createdBy   String
+  accessCount Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@index([token])
   @@index([scenarioId])
 }
 

@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { useScenario } from "@/contexts/ScenarioContext";
 import ProjectionChart from "@/components/dashboard/ProjectionChart";
+import HealthScoreGauge from "@/components/dashboard/HealthScoreGauge";
+import ComponentScores from "@/components/dashboard/ComponentScores";
+import InsightsPanel from "@/components/dashboard/InsightsPanel";
 import Link from "next/link";
+import { formatCurrency } from "@/lib/format";
+import { DashboardSkeleton } from "@/components/ui/Skeleton";
 
 type DashboardData = {
   totalAnnualIncome: number;
@@ -13,14 +18,11 @@ type DashboardData = {
   goalsCount: number;
 };
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
+type HealthScoreData = {
+  overall: number;
+  components: { name: string; score: number; weight: number; description: string }[];
+  insights: { type: "positive" | "warning" | "action"; title: string; description: string }[];
+};
 
 function SummaryCard({
   title,
@@ -52,7 +54,7 @@ function SummaryCard({
   };
 
   return (
-    <div className={`rounded-2xl border p-6 ${colorClasses[color]}`}>
+    <div className={`rounded-2xl border p-6 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 ${colorClasses[color]}`}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-zinc-400">{title}</p>
@@ -121,6 +123,7 @@ function PlusIcon() {
 export function DashboardClient({ userName }: { userName: string }) {
   const { selectedScenarioId, isLoading: scenarioLoading, error: scenarioError } = useScenario();
   const [data, setData] = useState<DashboardData | null>(null);
+  const [healthScore, setHealthScore] = useState<HealthScoreData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -134,12 +137,19 @@ export function DashboardClient({ userName }: { userName: string }) {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/dashboard?scenarioId=${selectedScenarioId}`);
-        if (!res.ok) {
-          throw new Error("Failed to fetch dashboard data");
-        }
-        const dashboardData = await res.json();
+        const [dashRes, healthRes] = await Promise.all([
+          fetch(`/api/dashboard?scenarioId=${selectedScenarioId}`),
+          fetch(`/api/health-score?scenarioId=${selectedScenarioId}`),
+        ]);
+
+        if (!dashRes.ok) throw new Error("Failed to fetch dashboard data");
+        const dashboardData = await dashRes.json();
         setData(dashboardData);
+
+        if (healthRes.ok) {
+          const healthData = await healthRes.json();
+          setHealthScore(healthData);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load dashboard");
       } finally {
@@ -151,11 +161,7 @@ export function DashboardClient({ userName }: { userName: string }) {
   }, [selectedScenarioId]);
 
   if (scenarioLoading || (loading && selectedScenarioId)) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-zinc-400">Loading dashboard...</div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (scenarioError || error) {
@@ -181,6 +187,19 @@ export function DashboardClient({ userName }: { userName: string }) {
         <h1 className="text-2xl font-semibold">Welcome back, {userName}</h1>
         <p className="text-zinc-400 mt-1">Here&apos;s your financial overview</p>
       </div>
+
+      {/* Health Score */}
+      {healthScore && (
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6 shadow-lg shadow-black/20">
+          <h2 className="text-lg font-medium mb-4">Financial Health Score</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            <div className="flex justify-center">
+              <HealthScoreGauge score={healthScore.overall} />
+            </div>
+            <ComponentScores components={healthScore.components} />
+          </div>
+        </div>
+      )}
 
       {/* Summary cards */}
       {data ? (
@@ -218,6 +237,11 @@ export function DashboardClient({ userName }: { userName: string }) {
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center">
           <p className="text-zinc-400">No data available for this scenario.</p>
         </div>
+      )}
+
+      {/* Insights */}
+      {healthScore && healthScore.insights.length > 0 && (
+        <InsightsPanel insights={healthScore.insights} />
       )}
 
       {/* Net Worth Projection Chart */}

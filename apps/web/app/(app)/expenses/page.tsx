@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useScenario } from "@/contexts/ScenarioContext";
 import CSVImportWizard from "@/components/import/CSVImportWizard";
+import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { PageSkeleton } from "@/components/ui/Skeleton";
+import EmptyState from "@/components/ui/EmptyState";
+import { formatCurrency } from "@/lib/format";
 
 type Expense = {
   id: string;
@@ -39,15 +44,6 @@ const FREQUENCY_LABELS: Record<string, string> = {
   ONE_TIME: "One-time",
 };
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
 function annualizeAmount(amount: number, frequency: string): number {
   switch (frequency) {
     case "MONTHLY":
@@ -77,6 +73,7 @@ function groupByCategory(expenses: Expense[]): Record<string, Expense[]> {
 
 export default function ExpensesPage() {
   const { selectedScenarioId, isLoading: scenarioLoading, error: scenarioError } = useScenario();
+  const toast = useToast();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +81,7 @@ export default function ExpensesPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [showImport, setShowImport] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Fetch expenses
   useEffect(() => {
@@ -112,8 +110,7 @@ export default function ExpensesPage() {
   }, [selectedScenarioId]);
 
   async function handleDelete(expenseId: string) {
-    if (!confirm("Are you sure you want to delete this expense?")) return;
-
+    setConfirmDeleteId(null);
     setDeleting(expenseId);
     try {
       const res = await fetch(`/api/expenses/${expenseId}`, { method: "DELETE" });
@@ -121,8 +118,9 @@ export default function ExpensesPage() {
         throw new Error("Failed to delete expense");
       }
       setExpenses(expenses.filter((e) => e.id !== expenseId));
+      toast.success("Expense deleted");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete expense");
+      toast.error(err instanceof Error ? err.message : "Failed to delete expense");
     } finally {
       setDeleting(null);
     }
@@ -143,7 +141,7 @@ export default function ExpensesPage() {
   async function handleImportComplete(count: number) {
     setShowImport(false);
     if (count > 0 && selectedScenarioId) {
-      const res = await fetch(`/api/expenses?selectedScenarioId=${selectedScenarioId}`);
+      const res = await fetch(`/api/expenses?scenarioId=${selectedScenarioId}`);
       if (res.ok) {
         const data = await res.json();
         setExpenses(data.expenses);
@@ -179,11 +177,7 @@ export default function ExpensesPage() {
     .reduce((sum, e) => sum + annualizeAmount(e.amount, e.frequency), 0);
 
   if (scenarioLoading || (loading && selectedScenarioId)) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-zinc-400">Loading expenses...</div>
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   if (scenarioError || error) {
@@ -238,7 +232,7 @@ export default function ExpensesPage() {
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <CSVImportWizard
               type="expense"
-              selectedScenarioId={selectedScenarioId}
+              scenarioId={selectedScenarioId}
               onComplete={handleImportComplete}
               onCancel={() => setShowImport(false)}
             />
@@ -248,22 +242,22 @@ export default function ExpensesPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">Monthly Total</div>
           <div className="text-2xl font-semibold mt-1">{formatCurrency(totalMonthly)}</div>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">Annual Total</div>
           <div className="text-2xl font-semibold mt-1">{formatCurrency(totalAnnual)}</div>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">Discretionary</div>
           <div className="text-2xl font-semibold mt-1">{formatCurrency(discretionaryTotal / 12)}/mo</div>
           <div className="text-xs text-zinc-500 mt-1">
             {totalAnnual > 0 ? ((discretionaryTotal / totalAnnual) * 100).toFixed(1) : 0}% of total
           </div>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">Expense Count</div>
           <div className="text-2xl font-semibold mt-1">{expenses.length}</div>
           <div className="text-xs text-zinc-500 mt-1">{allCategories.length} categories</div>
@@ -300,17 +294,40 @@ export default function ExpensesPage() {
         </div>
       )}
 
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title="Delete Expense"
+        description="Are you sure you want to delete this expense? This action cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+
       {/* Expenses List - Grouped by Category */}
       {expenses.length === 0 ? (
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-12 text-center">
-          <div className="text-zinc-400 mb-4">No expenses yet</div>
-          <Link
-            href={`/expenses/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
-            className="text-sm text-zinc-50 hover:text-zinc-200 underline"
-          >
-            Add your first expense
-          </Link>
-        </div>
+        <EmptyState
+          icon={
+            <svg
+              className="w-12 h-12 text-zinc-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+              />
+            </svg>
+          }
+          title="No expenses yet"
+          description="Track your household spending by adding expenses"
+          actionLabel="Add Expense"
+          actionHref={`/expenses/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
+        />
       ) : (
         <div className="space-y-4">
           {categories.map((category) => {
@@ -392,7 +409,7 @@ export default function ExpensesPage() {
                                   Edit
                                 </Link>
                                 <button
-                                  onClick={() => handleDelete(expense.id)}
+                                  onClick={() => setConfirmDeleteId(expense.id)}
                                   disabled={deleting === expense.id}
                                   className="px-3 py-1 text-xs text-red-400 hover:text-red-300 border border-zinc-700 rounded-lg hover:border-red-700 transition-colors disabled:opacity-50"
                                 >

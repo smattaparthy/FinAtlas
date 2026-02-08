@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useScenario } from "@/contexts/ScenarioContext";
 import CSVImportWizard from "@/components/import/CSVImportWizard";
+import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { PageSkeleton } from "@/components/ui/Skeleton";
+import EmptyState from "@/components/ui/EmptyState";
+import { formatCurrency } from "@/lib/format";
 
 type Holding = {
   id: string;
@@ -52,15 +57,6 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   "529": "529",
 };
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
 function formatPercent(rate: number): string {
   // rate comes in as decimal (0.07 = 7%), Intl.NumberFormat handles the conversion
   return new Intl.NumberFormat("en-US", {
@@ -72,11 +68,13 @@ function formatPercent(rate: number): string {
 
 export default function InvestmentsPage() {
   const { selectedScenarioId, isLoading: scenarioLoading, error: scenarioError } = useScenario();
+  const toast = useToast();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedScenarioId) return;
@@ -100,8 +98,7 @@ export default function InvestmentsPage() {
   }, [selectedScenarioId]);
 
   async function handleDelete(accountId: string) {
-    if (!confirm("Are you sure you want to delete this account?")) return;
-
+    setConfirmDeleteId(null);
     setDeleting(accountId);
     try {
       const res = await fetch(`/api/accounts/${accountId}`, { method: "DELETE" });
@@ -109,8 +106,9 @@ export default function InvestmentsPage() {
         throw new Error("Failed to delete account");
       }
       setAccounts(accounts.filter((a) => a.id !== accountId));
+      toast.success("Account deleted");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete account");
+      toast.error(err instanceof Error ? err.message : "Failed to delete account");
     } finally {
       setDeleting(null);
     }
@@ -119,7 +117,7 @@ export default function InvestmentsPage() {
   async function handleImportComplete(count: number) {
     setShowImport(false);
     if (count > 0 && selectedScenarioId) {
-      const res = await fetch(`/api/accounts?selectedScenarioId=${selectedScenarioId}`);
+      const res = await fetch(`/api/accounts?scenarioId=${selectedScenarioId}`);
       if (res.ok) {
         const data = await res.json();
         setAccounts(data.accounts);
@@ -149,11 +147,7 @@ export default function InvestmentsPage() {
   );
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-zinc-400">Loading investments...</div>
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   if (error) {
@@ -200,7 +194,7 @@ export default function InvestmentsPage() {
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <CSVImportWizard
               type="account"
-              selectedScenarioId={selectedScenarioId}
+              scenarioId={selectedScenarioId}
               onComplete={handleImportComplete}
               onCancel={() => setShowImport(false)}
             />
@@ -210,19 +204,19 @@ export default function InvestmentsPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">Total Value</div>
           <div className="text-2xl font-semibold mt-1">{formatCurrency(totalBalance)}</div>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">Monthly Contributions</div>
           <div className="text-2xl font-semibold mt-1">{formatCurrency(totalContributions)}</div>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">Accounts</div>
           <div className="text-2xl font-semibold mt-1">{accounts.length}</div>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">Tax Treatment</div>
           <div className="flex gap-2 mt-2 text-xs">
             <span className="text-purple-400">{taxDeferred.length} Deferred</span>
@@ -232,17 +226,26 @@ export default function InvestmentsPage() {
         </div>
       </div>
 
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title="Delete Account"
+        description="Are you sure you want to delete this investment account? This action cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+
       {/* Accounts List */}
       {accounts.length === 0 ? (
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-12 text-center">
-          <div className="text-zinc-400 mb-4">No investment accounts yet</div>
-          <Link
-            href={`/investments/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
-            className="text-sm text-zinc-50 hover:text-zinc-200 underline"
-          >
-            Add your first account
-          </Link>
-        </div>
+        <EmptyState
+          icon="chart-bar"
+          title="No investment accounts yet"
+          description="Start tracking your investment accounts and holdings"
+          actionLabel="Add your first account"
+          actionHref={`/investments/new${selectedScenarioId ? `?selectedScenarioId=${selectedScenarioId}` : ""}`}
+        />
       ) : (
         <div className="space-y-4">
           {accounts.map((account) => (
@@ -279,7 +282,7 @@ export default function InvestmentsPage() {
                     Edit
                   </Link>
                   <button
-                    onClick={() => handleDelete(account.id)}
+                    onClick={() => setConfirmDeleteId(account.id)}
                     disabled={deleting === account.id}
                     className="px-3 py-1 text-xs text-red-400 hover:text-red-300 border border-zinc-700 rounded-lg hover:border-red-700 transition-colors disabled:opacity-50"
                   >
