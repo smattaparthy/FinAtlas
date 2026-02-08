@@ -1,6 +1,6 @@
 "use client";
 
-import { usePreferences, Currency, DateFormat } from "@/contexts/PreferencesContext";
+import { usePreferences, Currency, DateFormat, Theme } from "@/contexts/PreferencesContext";
 
 const CURRENCY_OPTIONS: { value: Currency; label: string }[] = [
   { value: "USD", label: "USD ($)" },
@@ -13,6 +13,12 @@ const DATE_FORMAT_OPTIONS: { value: DateFormat; label: string }[] = [
   { value: "MM/DD/YYYY", label: "MM/DD/YYYY (12/31/2025)" },
   { value: "DD/MM/YYYY", label: "DD/MM/YYYY (31/12/2025)" },
   { value: "YYYY-MM-DD", label: "YYYY-MM-DD (2025-12-31)" },
+];
+
+const THEME_OPTIONS: { value: Theme; label: string }[] = [
+  { value: "dark", label: "Dark" },
+  { value: "light", label: "Light" },
+  { value: "system", label: "System" },
 ];
 
 export function PreferencesSection() {
@@ -70,14 +76,17 @@ export function PreferencesSection() {
             <p className="text-xs text-zinc-500 mt-0.5">Customize the app appearance</p>
           </div>
           <select
-            className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 w-48 opacity-50 cursor-not-allowed"
-            value="dark"
-            disabled
+            className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 transition-colors w-48"
+            value={preferences.theme}
+            onChange={(e) => updatePreferences({ theme: e.target.value as Theme })}
           >
-            <option value="dark">Dark</option>
+            {THEME_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
-        <p className="text-xs text-zinc-600 -mt-3 text-right">Light theme coming soon</p>
 
         {/* Notifications Setting */}
         <div className="flex items-center justify-between">

@@ -161,7 +161,7 @@ export default function SpendingTrendsChart({ data, height = 350 }: SpendingTren
                 y1={y}
                 x2="100"
                 y2={y}
-                stroke="#27272a"
+                stroke="rgb(var(--zinc-800))"
                 strokeWidth="0.2"
                 vectorEffect="non-scaling-stroke"
               />

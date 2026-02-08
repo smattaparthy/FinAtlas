@@ -244,7 +244,7 @@ export default function NetWorthHistoryChart({
                 cy={p.y}
                 r="1.5"
                 fill="rgb(56, 189, 248)"
-                stroke="rgb(9, 9, 11)"
+                stroke="rgb(var(--zinc-950))"
                 strokeWidth="1"
                 vectorEffect="non-scaling-stroke"
               />

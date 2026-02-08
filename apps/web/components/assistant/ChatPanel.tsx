@@ -1,12 +1,18 @@
 "use client";
 
 import { useChat } from "@/contexts/ChatContext";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { generateRecommendations } from "@/lib/assistant/promptRecommendations";
 
 export default function ChatPanel() {
   const { state, sendMessage, confirmModification, rejectModification } = useChat();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const recommendations = useMemo(
+    () => generateRecommendations(state.baselineData),
+    [state.baselineData]
+  );
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -32,9 +38,25 @@ export default function ChatPanel() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-4 mb-4">
         {state.messages.length === 0 && (
-          <div className="text-center text-zinc-500 py-8">
-            <p>Ask me anything about your financial future!</p>
-            <p className="text-sm mt-2">Try: "What if my salary increases by $20k?"</p>
+          <div className="py-6">
+            <p className="text-center text-zinc-400 mb-1 text-sm font-medium">
+              Ask me anything about your financial future
+            </p>
+            <p className="text-center text-zinc-500 text-xs mb-4">
+              Click a suggestion or type your own question
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {recommendations.map((rec) => (
+                <button
+                  key={rec.id}
+                  onClick={() => setInput(rec.prompt)}
+                  className="text-left rounded-xl border border-zinc-700 bg-zinc-800/50 px-3 py-2.5 text-sm cursor-pointer hover:border-emerald-500/50 hover:bg-zinc-800 transition-colors group"
+                >
+                  <span className="mr-2">{rec.icon}</span>
+                  <span className="text-zinc-300 group-hover:text-zinc-100 transition-colors">{rec.prompt}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

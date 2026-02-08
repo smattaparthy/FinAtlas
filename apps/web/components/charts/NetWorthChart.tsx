@@ -169,7 +169,7 @@ export default function NetWorthChart({ series, height = 200, milestones = [] }:
                 <polygon
                   points={`${m.x},${m.y - 4} ${m.x + 3},${m.y} ${m.x},${m.y + 4} ${m.x - 3},${m.y}`}
                   fill={m.color}
-                  stroke="rgb(9, 9, 11)"
+                  stroke="rgb(var(--zinc-950))"
                   strokeWidth="1"
                   vectorEffect="non-scaling-stroke"
                 />

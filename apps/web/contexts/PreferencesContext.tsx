@@ -4,10 +4,12 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 
 export type Currency = "USD" | "EUR" | "GBP" | "JPY";
 export type DateFormat = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD";
+export type Theme = "light" | "dark" | "system";
 
 export type UserPreferences = {
   currency: Currency;
   dateFormat: DateFormat;
+  theme: Theme;
 };
 
 type PreferencesContextType = {
@@ -22,6 +24,7 @@ const STORAGE_KEY = "finatlas_preferences";
 const DEFAULT_PREFERENCES: UserPreferences = {
   currency: "USD",
   dateFormat: "MM/DD/YYYY",
+  theme: "dark",
 };
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
@@ -53,6 +56,28 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [preferences, isHydrated]);
+
+  // Apply theme to DOM
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    const applyTheme = (resolved: "light" | "dark") => {
+      document.documentElement.setAttribute("data-theme", resolved);
+    };
+
+    if (preferences.theme === "system") {
+      const mql = window.matchMedia("(prefers-color-scheme: dark)");
+      applyTheme(mql.matches ? "dark" : "light");
+
+      const handler = (e: MediaQueryListEvent) => {
+        applyTheme(e.matches ? "dark" : "light");
+      };
+      mql.addEventListener("change", handler);
+      return () => mql.removeEventListener("change", handler);
+    } else {
+      applyTheme(preferences.theme);
+    }
+  }, [preferences.theme, isHydrated]);
 
   const updatePreferences = (updates: Partial<UserPreferences>) => {
     setPreferences((prev) => ({ ...prev, ...updates }));

@@ -192,7 +192,7 @@ export default function FireProjectionChart({
               <polygon
                 points={`${chartData.crossoverX},${chartData.crossoverY - 4} ${chartData.crossoverX + 3},${chartData.crossoverY} ${chartData.crossoverX},${chartData.crossoverY + 4} ${chartData.crossoverX - 3},${chartData.crossoverY}`}
                 fill="rgb(34,197,94)"
-                stroke="rgb(9,9,11)"
+                stroke="rgb(var(--zinc-950))"
                 strokeWidth="1"
                 vectorEffect="non-scaling-stroke"
               />

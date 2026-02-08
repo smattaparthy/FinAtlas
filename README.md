@@ -21,7 +21,8 @@ FinAtlas is a privacy-first, local-only household financial planning application
 - **Privacy-First Architecture** — All data stored locally with SQLite. No financial data leaves your machine.
 - **Deterministic Projections** — Every calculation is reproducible. No LLM approximations for your finances.
 - **Multi-Scenario Planning** — Create baseline, optimistic, and pessimistic scenarios and compare them side-by-side.
-- **AI-Powered Assistant** — Natural language interface for exploring what-if scenarios powered by Anthropic Claude.
+- **AI-Powered Assistant** — Natural language interface with contextual prompt recommendations, powered by Anthropic Claude.
+- **Light / Dark / System Theme** — Full theme toggle with automatic OS preference detection and zero-FOUC rendering.
 - **47 Feature Pages** — Comprehensive coverage from daily budgeting to long-term retirement planning.
 - **Multi-Household Support** — Manage separate financial profiles for different households or family structures.
 
@@ -115,7 +116,14 @@ FinAtlas is a privacy-first, local-only household financial planning application
 | **Reports** | Generate comprehensive financial reports across all data categories. |
 | **Data Export** | Download income, expenses, loans, accounts, and goals as CSV files for external analysis. |
 | **CSV Import** | Bulk import financial data from spreadsheets with guided column mapping. |
-| **AI Assistant** | Ask natural language questions about your finances and explore what-if scenarios with AI-powered analysis. |
+| **AI Assistant** | Ask natural language questions about your finances and explore what-if scenarios with AI-powered analysis. Contextual prompt recommendations adapt to your data. |
+
+### Personalization
+| Feature | Description |
+|---------|-------------|
+| **Theme Toggle** | Switch between Dark, Light, and System themes. CSS variable-based zinc palette inversion adapts the entire UI with zero page-level changes. |
+| **Currency & Date Format** | Choose preferred currency (USD, EUR, GBP, JPY) and date display format. |
+| **Preferences Persistence** | All user preferences stored in localStorage with instant application across sessions. |
 
 ---
 
@@ -125,7 +133,7 @@ FinAtlas is a privacy-first, local-only household financial planning application
 |-------|-----------|
 | **Framework** | [Next.js 14](https://nextjs.org/) (App Router) |
 | **Language** | [TypeScript](https://www.typescriptlang.org/) 5.6 (strict mode) |
-| **Styling** | [Tailwind CSS](https://tailwindcss.com/) 3.4 |
+| **Styling** | [Tailwind CSS](https://tailwindcss.com/) 3.4 with CSS variable theming |
 | **Database** | SQLite via [Prisma](https://www.prisma.io/) ORM |
 | **Authentication** | JWT with httpOnly cookies, [Argon2](https://github.com/ranisalt/node-argon2) password hashing |
 | **AI Integration** | [Anthropic Claude](https://www.anthropic.com/) API (optional) |
@@ -153,6 +161,7 @@ finatlas/
 │       ├── contexts/            # React context providers
 │       ├── lib/
 │       │   ├── amortization/    # Loan amortization calculations
+│       │   ├── assistant/       # AI prompt recommendation engine
 │       │   ├── auth/            # Session management
 │       │   ├── db/              # Prisma client
 │       │   ├── performance/     # Investment performance calculations
@@ -270,6 +279,7 @@ The sidebar organizes 47 pages into 7 collapsible sections for clean navigation:
 - **Analysis** — Charts, Net Worth History, Ratios, Monte Carlo, Compare, What-If
 - **Retirement** — FIRE Calculator, Emergency Fund
 - **Tools** — Reports, Export, Assistant
+- **Settings** — Preferences (Theme, Currency, Date Format)
 
 ### API
 
