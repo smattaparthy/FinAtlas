@@ -8,6 +8,7 @@ import { HouseholdProvider } from "@/contexts/HouseholdContext";
 import { ScenarioProvider } from "@/contexts/ScenarioContext";
 import { ToastProvider } from "@/components/ui/Toast";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -38,6 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-3">
                 <HouseholdSelector />
                 <ScenarioSelector />
+                <NotificationBell />
               </div>
             </header>
 

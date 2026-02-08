@@ -53,6 +53,8 @@ const navSections: NavSection[] = [
       { href: "/milestones", label: "Milestones", icon: MilestoneIcon },
       { href: "/calendar", label: "Calendar", icon: CalendarNavIcon },
       { href: "/members", label: "Members", icon: MembersIcon },
+      { href: "/college-savings", label: "College Savings", icon: CollegeSavingsIcon },
+      { href: "/insurance-calculator", label: "Insurance Calc", icon: InsuranceCalcIcon },
     ],
   },
   {
@@ -60,6 +62,7 @@ const navSections: NavSection[] = [
     items: [
       { href: "/financial-health", label: "Health Score", icon: HealthScoreIcon },
       { href: "/charts", label: "Charts", icon: ChartIcon },
+      { href: "/visualizations", label: "Visualizations", icon: VisualizationsIcon },
       { href: "/net-worth-history", label: "NW History", icon: NetWorthHistoryIcon },
       { href: "/financial-ratios", label: "Ratios", icon: RatiosIcon },
       { href: "/monte-carlo", label: "Monte Carlo", icon: MonteCarloIcon },
@@ -72,6 +75,7 @@ const navSections: NavSection[] = [
     items: [
       { href: "/fire-calculator", label: "FIRE Calc", icon: FireCalcIcon },
       { href: "/emergency-fund", label: "Emergency Fund", icon: EmergencyFundIcon },
+      { href: "/retirement-income", label: "Income Strategy", icon: IncomeStrategyIcon },
     ],
   },
   {
@@ -79,6 +83,8 @@ const navSections: NavSection[] = [
     items: [
       { href: "/reports", label: "Reports", icon: ReportIcon },
       { href: "/export", label: "Export", icon: ExportIcon },
+      { href: "/import", label: "Import Data", icon: ImportDataIcon },
+      { href: "/categorization", label: "Categorize", icon: CategorizeIcon },
       { href: "/assistant", label: "Assistant", icon: AssistantIcon },
     ],
   },
@@ -534,6 +540,55 @@ function HealthScoreIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+    </svg>
+  );
+}
+
+function ImportDataIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+    </svg>
+  );
+}
+
+function CategorizeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
+    </svg>
+  );
+}
+
+function VisualizationsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M3 20.25h18M3.75 20.25V3.75" />
+    </svg>
+  );
+}
+
+function IncomeStrategyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+    </svg>
+  );
+}
+
+function CollegeSavingsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
+    </svg>
+  );
+}
+
+function InsuranceCalcIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" />
     </svg>
   );
 }

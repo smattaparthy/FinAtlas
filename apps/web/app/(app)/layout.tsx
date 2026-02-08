@@ -15,9 +15,9 @@ export default async function AppLayout({
   }
 
   return (
-    <>
+    <AppShell>
       <CommandPalette />
-      <AppShell>{children}</AppShell>
-    </>
+      {children}
+    </AppShell>
   );
 }

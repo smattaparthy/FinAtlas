@@ -9,6 +9,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import { formatCurrency } from "@/lib/format";
+import BulkActionBar from "@/components/bulk/BulkActionBar";
 
 type Loan = {
   id: string;
@@ -80,6 +81,11 @@ export default function LoansPage() {
   const [showImport, setShowImport] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkOperating, setBulkOperating] = useState(false);
+
   useEffect(() => {
     if (!selectedScenarioId) return;
 
@@ -110,6 +116,11 @@ export default function LoansPage() {
         throw new Error("Failed to delete loan");
       }
       setLoans(loans.filter((l) => l.id !== loanId));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(loanId);
+        return next;
+      });
       toast.success("Loan deleted");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete loan");
@@ -126,6 +137,57 @@ export default function LoansPage() {
         const data = await res.json();
         setLoans(data.loans);
       }
+    }
+  }
+
+  // Bulk selection handlers
+  function toggleSelectLoan(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === loans.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(loans.map((l) => l.id)));
+    }
+  }
+
+  async function handleBulkDelete() {
+    setConfirmBulkDelete(false);
+    if (!selectedScenarioId || selectedIds.size === 0) return;
+    setBulkOperating(true);
+    try {
+      const res = await fetch("/api/loans/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds), scenarioId: selectedScenarioId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to delete loans");
+      }
+      const data = await res.json();
+      toast.success(`Deleted ${data.deletedCount} loan${data.deletedCount === 1 ? "" : "s"}`);
+      // Refetch data
+      const refetch = await fetch(`/api/loans?scenarioId=${selectedScenarioId}`);
+      if (refetch.ok) {
+        const refetchData = await refetch.json();
+        setLoans(refetchData.loans);
+      }
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete loans");
+    } finally {
+      setBulkOperating(false);
     }
   }
 
@@ -211,7 +273,7 @@ export default function LoansPage() {
         </div>
       </div>
 
-      {/* Confirm Delete Dialog */}
+      {/* Confirm Delete Dialog (single) */}
       <ConfirmDialog
         open={!!confirmDeleteId}
         title="Delete Loan"
@@ -220,6 +282,17 @@ export default function LoansPage() {
         destructive
         onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
         onCancel={() => setConfirmDeleteId(null)}
+      />
+
+      {/* Confirm Bulk Delete Dialog */}
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title="Delete Selected Loans"
+        description={`Are you sure you want to delete ${selectedIds.size} loan${selectedIds.size === 1 ? "" : "s"}? This action cannot be undone.`}
+        confirmLabel="Delete All"
+        destructive
+        onConfirm={handleBulkDelete}
+        onCancel={() => setConfirmBulkDelete(false)}
       />
 
       {/* Loans List */}
@@ -233,13 +306,37 @@ export default function LoansPage() {
         />
       ) : (
         <div className="space-y-4">
+          {/* Select All Bar */}
+          <div className="flex items-center gap-3 px-1">
+            <input
+              type="checkbox"
+              checked={selectedIds.size === loans.length && loans.length > 0}
+              ref={(el) => {
+                if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < loans.length;
+              }}
+              onChange={toggleSelectAll}
+              className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500"
+            />
+            <span className="text-sm text-zinc-400">
+              {selectedIds.size > 0 ? `${selectedIds.size} selected` : "Select all"}
+            </span>
+          </div>
+
           {loans.map((loan) => (
             <div
               key={loan.id}
-              className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 hover:border-zinc-700 transition-colors"
+              className={`rounded-2xl border bg-zinc-950/60 p-4 hover:border-zinc-700 transition-colors ${
+                selectedIds.has(loan.id) ? "border-emerald-700/50 bg-emerald-950/10" : "border-zinc-800"
+              }`}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(loan.id)}
+                    onChange={() => toggleSelectLoan(loan.id)}
+                    className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500 mt-0.5"
+                  />
                   <span
                     className={`px-2 py-0.5 text-xs font-medium rounded-lg border ${
                       LOAN_TYPE_COLORS[loan.type] || LOAN_TYPE_COLORS.OTHER
@@ -299,6 +396,15 @@ export default function LoansPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && !bulkOperating && (
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          onDelete={() => setConfirmBulkDelete(true)}
+          onClearSelection={() => setSelectedIds(new Set())}
+        />
       )}
     </div>
   );

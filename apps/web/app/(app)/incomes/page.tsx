@@ -9,6 +9,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import { formatCurrency } from "@/lib/format";
+import BulkActionBar from "@/components/bulk/BulkActionBar";
 
 type Income = {
   id: string;
@@ -73,6 +74,11 @@ export default function IncomesPage() {
   const [showImport, setShowImport] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkOperating, setBulkOperating] = useState(false);
+
   useEffect(() => {
     if (!selectedScenarioId) return;
 
@@ -104,6 +110,11 @@ export default function IncomesPage() {
         throw new Error("Failed to delete income");
       }
       setIncomes(incomes.filter((i) => i.id !== incomeId));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(incomeId);
+        return next;
+      });
       toast.success("Income deleted");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete income");
@@ -121,6 +132,57 @@ export default function IncomesPage() {
         const data = await res.json();
         setIncomes(data.incomes);
       }
+    }
+  }
+
+  // Bulk selection handlers
+  function toggleSelectIncome(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === incomes.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(incomes.map((i) => i.id)));
+    }
+  }
+
+  async function handleBulkDelete() {
+    setConfirmBulkDelete(false);
+    if (!selectedScenarioId || selectedIds.size === 0) return;
+    setBulkOperating(true);
+    try {
+      const res = await fetch("/api/incomes/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds), scenarioId: selectedScenarioId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to delete incomes");
+      }
+      const data = await res.json();
+      toast.success(`Deleted ${data.deletedCount} income${data.deletedCount === 1 ? "" : "s"}`);
+      // Refetch data
+      const refetch = await fetch(`/api/incomes?scenarioId=${selectedScenarioId}`);
+      if (refetch.ok) {
+        const refetchData = await refetch.json();
+        setIncomes(refetchData.incomes);
+      }
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete incomes");
+    } finally {
+      setBulkOperating(false);
     }
   }
 
@@ -235,6 +297,17 @@ export default function IncomesPage() {
         onCancel={() => setConfirmDeleteId(null)}
       />
 
+      {/* Confirm Bulk Delete Dialog */}
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title="Delete Selected Incomes"
+        description={`Are you sure you want to delete ${selectedIds.size} income${selectedIds.size === 1 ? "" : "s"}? This action cannot be undone.`}
+        confirmLabel="Delete All"
+        destructive
+        onConfirm={handleBulkDelete}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
+
       {incomes.length === 0 ? (
         <EmptyState
           icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>}
@@ -248,6 +321,17 @@ export default function IncomesPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400 uppercase tracking-wide">
+                <th className="px-4 py-3 font-medium w-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.size === incomes.length && incomes.length > 0}
+                    ref={(el) => {
+                      if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < incomes.length;
+                    }}
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500"
+                  />
+                </th>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium hidden md:table-cell">Member</th>
                 <th className="px-4 py-3 font-medium text-right">Amount</th>
@@ -259,7 +343,15 @@ export default function IncomesPage() {
             </thead>
             <tbody className="divide-y divide-zinc-800">
               {incomes.map((income) => (
-                <tr key={income.id} className="hover:bg-zinc-900/50 transition-colors">
+                <tr key={income.id} className={`hover:bg-zinc-900/50 transition-colors ${selectedIds.has(income.id) ? "bg-emerald-950/20" : ""}`}>
+                  <td className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(income.id)}
+                      onChange={() => toggleSelectIncome(income.id)}
+                      className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{income.name}</span>
@@ -328,6 +420,15 @@ export default function IncomesPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && !bulkOperating && (
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          onDelete={() => setConfirmBulkDelete(true)}
+          onClearSelection={() => setSelectedIds(new Set())}
+        />
       )}
     </div>
   );

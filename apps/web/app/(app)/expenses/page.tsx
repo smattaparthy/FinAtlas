@@ -9,6 +9,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import { formatCurrency } from "@/lib/format";
+import BulkActionBar from "@/components/bulk/BulkActionBar";
 
 type Expense = {
   id: string;
@@ -83,6 +84,11 @@ export default function ExpensesPage() {
   const [showImport, setShowImport] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkOperating, setBulkOperating] = useState(false);
+
   // Fetch expenses
   useEffect(() => {
     if (!selectedScenarioId) return;
@@ -118,6 +124,11 @@ export default function ExpensesPage() {
         throw new Error("Failed to delete expense");
       }
       setExpenses(expenses.filter((e) => e.id !== expenseId));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(expenseId);
+        return next;
+      });
       toast.success("Expense deleted");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete expense");
@@ -148,6 +159,94 @@ export default function ExpensesPage() {
         const categories = new Set(data.expenses.map((e: Expense) => e.category || "Uncategorized"));
         setExpandedCategories(categories as Set<string>);
       }
+    }
+  }
+
+  // Bulk selection handlers
+  function toggleSelectExpense(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === filteredExpenses.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredExpenses.map((e) => e.id)));
+    }
+  }
+
+  async function handleBulkDelete() {
+    setConfirmBulkDelete(false);
+    if (!selectedScenarioId || selectedIds.size === 0) return;
+    setBulkOperating(true);
+    try {
+      const res = await fetch("/api/expenses/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds), scenarioId: selectedScenarioId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to delete expenses");
+      }
+      const data = await res.json();
+      toast.success(`Deleted ${data.deletedCount} expense${data.deletedCount === 1 ? "" : "s"}`);
+      // Refetch data
+      const refetch = await fetch(`/api/expenses?scenarioId=${selectedScenarioId}`);
+      if (refetch.ok) {
+        const refetchData = await refetch.json();
+        setExpenses(refetchData.expenses);
+        const categories = new Set(refetchData.expenses.map((e: Expense) => e.category || "Uncategorized"));
+        setExpandedCategories(categories as Set<string>);
+      }
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete expenses");
+    } finally {
+      setBulkOperating(false);
+    }
+  }
+
+  async function handleBulkCategoryChange(category: string) {
+    if (!selectedScenarioId || selectedIds.size === 0) return;
+    setBulkOperating(true);
+    try {
+      const res = await fetch("/api/expenses/bulk-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: Array.from(selectedIds),
+          scenarioId: selectedScenarioId,
+          updates: { category },
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to update expenses");
+      }
+      const data = await res.json();
+      toast.success(`Updated ${data.updatedCount} expense${data.updatedCount === 1 ? "" : "s"} to ${category}`);
+      // Refetch data
+      const refetch = await fetch(`/api/expenses?scenarioId=${selectedScenarioId}`);
+      if (refetch.ok) {
+        const refetchData = await refetch.json();
+        setExpenses(refetchData.expenses);
+        const categories = new Set(refetchData.expenses.map((e: Expense) => e.category || "Uncategorized"));
+        setExpandedCategories(categories as Set<string>);
+      }
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update expenses");
+    } finally {
+      setBulkOperating(false);
     }
   }
 
@@ -294,7 +393,7 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      {/* Confirm Delete Dialog */}
+      {/* Confirm Delete Dialog (single) */}
       <ConfirmDialog
         open={!!confirmDeleteId}
         title="Delete Expense"
@@ -303,6 +402,17 @@ export default function ExpensesPage() {
         destructive
         onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
         onCancel={() => setConfirmDeleteId(null)}
+      />
+
+      {/* Confirm Bulk Delete Dialog */}
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title="Delete Selected Expenses"
+        description={`Are you sure you want to delete ${selectedIds.size} expense${selectedIds.size === 1 ? "" : "s"}? This action cannot be undone.`}
+        confirmLabel="Delete All"
+        destructive
+        onConfirm={handleBulkDelete}
+        onCancel={() => setConfirmBulkDelete(false)}
       />
 
       {/* Expenses List - Grouped by Category */}
@@ -337,6 +447,8 @@ export default function ExpensesPage() {
               0
             );
             const isExpanded = expandedCategories.has(category);
+            const allInCategorySelected = categoryExpenses.every((e) => selectedIds.has(e.id));
+            const someInCategorySelected = categoryExpenses.some((e) => selectedIds.has(e.id));
 
             return (
               <div key={category} className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
@@ -357,7 +469,7 @@ export default function ExpensesPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="font-medium">{formatCurrency(categoryTotal)}/mo</span>
-                    <span className="text-zinc-500">{isExpanded ? "−" : "+"}</span>
+                    <span className="text-zinc-500">{isExpanded ? "\u2212" : "+"}</span>
                   </div>
                 </button>
 
@@ -367,6 +479,27 @@ export default function ExpensesPage() {
                     <table className="w-full">
                       <thead>
                         <tr className="text-xs text-zinc-500 uppercase tracking-wide">
+                          <th className="px-4 py-2 text-left font-medium w-10">
+                            <input
+                              type="checkbox"
+                              checked={allInCategorySelected && categoryExpenses.length > 0}
+                              ref={(el) => {
+                                if (el) el.indeterminate = someInCategorySelected && !allInCategorySelected;
+                              }}
+                              onChange={() => {
+                                setSelectedIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (allInCategorySelected) {
+                                    categoryExpenses.forEach((e) => next.delete(e.id));
+                                  } else {
+                                    categoryExpenses.forEach((e) => next.add(e.id));
+                                  }
+                                  return next;
+                                });
+                              }}
+                              className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500"
+                            />
+                          </th>
                           <th className="px-4 py-2 text-left font-medium">Name</th>
                           <th className="px-4 py-2 text-right font-medium">Amount</th>
                           <th className="px-4 py-2 text-center font-medium">Frequency</th>
@@ -376,7 +509,15 @@ export default function ExpensesPage() {
                       </thead>
                       <tbody className="divide-y divide-zinc-800/50">
                         {categoryExpenses.map((expense) => (
-                          <tr key={expense.id} className="hover:bg-zinc-900/30 transition-colors">
+                          <tr key={expense.id} className={`hover:bg-zinc-900/30 transition-colors ${selectedIds.has(expense.id) ? "bg-emerald-950/20" : ""}`}>
+                            <td className="px-4 py-3 w-10">
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.has(expense.id)}
+                                onChange={() => toggleSelectExpense(expense.id)}
+                                className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500"
+                              />
+                            </td>
                             <td className="px-4 py-3">
                               <Link
                                 href={`/expenses/${expense.id}/edit`}
@@ -427,6 +568,16 @@ export default function ExpensesPage() {
             );
           })}
         </div>
+      )}
+
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && !bulkOperating && (
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          onDelete={() => setConfirmBulkDelete(true)}
+          onCategoryChange={handleBulkCategoryChange}
+          onClearSelection={() => setSelectedIds(new Set())}
+        />
       )}
     </div>
   );
