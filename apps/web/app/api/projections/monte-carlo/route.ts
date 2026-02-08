@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { runEngine } from "@finatlas/engine";
+import { runMonteCarlo } from "@finatlas/engine";
+import type { MonteCarloConfig } from "@finatlas/engine";
 import { buildEngineInput } from "@/lib/engine/buildEngineInput";
 
 export async function GET(req: NextRequest) {
@@ -12,12 +13,13 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const scenarioId = searchParams.get("scenarioId");
+  const simulations = parseInt(searchParams.get("simulations") ?? "500", 10);
+  const volatility = parseFloat(searchParams.get("volatility") ?? "15");
 
   if (!scenarioId) {
     return NextResponse.json({ error: "scenarioId is required" }, { status: 400 });
   }
 
-  // Fetch all scenario data
   const scenario = await prisma.scenario.findFirst({
     where: {
       id: scenarioId,
@@ -53,13 +55,18 @@ export async function GET(req: NextRequest) {
 
   const engineInput = buildEngineInput(scenario);
 
+  const config: MonteCarloConfig = {
+    simulations: Math.min(Math.max(simulations, 50), 2000),
+    volatilityPct: Math.min(Math.max(volatility, 1), 50),
+  };
+
   try {
-    const result = runEngine(engineInput);
+    const result = runMonteCarlo(engineInput, config);
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Projection engine error:", error);
+    console.error("Monte Carlo engine error:", error);
     return NextResponse.json(
-      { error: "Failed to generate projection" },
+      { error: "Failed to run Monte Carlo simulation" },
       { status: 500 }
     );
   }

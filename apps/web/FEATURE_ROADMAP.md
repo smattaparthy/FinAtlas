@@ -4,7 +4,67 @@ Features documented for future implementation sessions.
 
 ---
 
-## Milestone Timeline & Life Event Modeling
+## Monte Carlo Simulation ✅
+
+### Overview
+Probabilistic projections using randomized investment returns to show the range of possible financial outcomes with confidence bands.
+
+### Components Built
+- **Engine**: `packages/engine/src/internal/random.ts` — Seeded PRNG (Mulberry32) + Box-Muller normal distribution for reproducibility
+- **Engine**: `packages/engine/src/internal/montecarlo.ts` — Monte Carlo runner that clones accounts with randomized `expectedReturnPct` per simulation, computes percentile bands (P10/P25/P50/P75/P90), success rates, and goal success rates
+- **Shared Helper**: `apps/web/lib/engine/buildEngineInput.ts` — Extracted shared engine input builder used by both `/api/projections` and `/api/projections/monte-carlo`
+- **API**: `GET /api/projections/monte-carlo?scenarioId=X&simulations=500&volatility=15` — Returns `MonteCarloResultDTO` with bands, success rate, goal success rates, and final net worth percentiles
+- **Chart**: `MonteCarloChart.tsx` — SVG confidence band chart with P10-P90 outer band, P25-P75 inner band, and P50 median line, wrapped in `ChartTooltip`
+- **Page**: `/monte-carlo` — Configuration panel (simulations 100-2000, volatility 5-30%), summary cards (success rate, median/best/worst net worth), chart, and goal success rate bars
+
+### Technical Details
+- Simulations clamped to 50-2000, volatility to 1-50%
+- Each simulation randomizes `expectedReturnPct` per account using `N(mean=currentRate, σ=volatilityPct)`
+- Success rate = % of simulations with final net worth > 0
+- Percentile computation uses sorted arrays with linear interpolation
+
+---
+
+## Budget vs Actual Tracking ✅
+
+### Overview
+Monthly budget tracking that compares planned expenses (from scenario expenses) against actual spending entered by the user, with visual comparison and variance analysis.
+
+### Components Built
+- **Database**: `ActualExpense` model in Prisma schema with unique constraint on `[scenarioId, category, month]`
+- **API**: `GET /api/budget?scenarioId=X&month=YYYY-MM` — Returns planned expenses (normalized to monthly via frequency multipliers) merged with actuals, grouped by category
+- **API**: `POST /api/budget` — Bulk upsert actuals using `$transaction` with composite unique key
+- **Chart**: `BudgetComparisonChart.tsx` — Horizontal grouped bar chart (planned=gray, actual=green/red)
+- **Page**: `/budget` — Month navigation, summary cards (total planned/actual, variance, over-budget count), comparison chart, editable category table with inline actual amount inputs and save
+
+### Technical Details
+- Frequency multipliers: MONTHLY=1, BIWEEKLY=26/12, WEEKLY=52/12, ANNUAL=1/12, ONE_TIME=0
+- Only recurring expenses shown in budget view (ONE_TIME filtered out)
+- Actuals with amount=0 are deleted on save
+
+---
+
+## Debt Payoff Strategies ✅
+
+### Overview
+Client-side Avalanche vs Snowball debt payoff strategy comparison with interactive extra payment input and visual comparison.
+
+### Components Built
+- **Library**: `apps/web/lib/debt/payoffStrategies.ts` — Pure computation engine with `compareStrategies(loans, extraMonthly)` returning both strategy results and savings delta
+- **Chart**: `DebtPayoffChart.tsx` — Two-line SVG chart comparing total remaining balance over time (emerald=avalanche, amber=snowball), with `ChartTooltip`
+- **Page**: `/debt-payoff` — Extra payment input, 3-column comparison summary (avalanche stats, snowball stats, savings), debt balance chart, tab-toggled payoff order list and loan breakdown table
+
+### Technical Details
+- Avalanche: targets highest interest rate loan first
+- Snowball: targets lowest balance loan first
+- Extra payments cascade: when a loan is paid off, its minimum payment becomes additional extra for the next target
+- All computation via `useMemo` — no API calls needed, re-computes on loans or extraMonthly change
+- EmptyState shown when no active loans, linking to `/loans/new`
+- 50-year (600 month) safety limit on payoff loop
+
+---
+
+## Milestone Timeline & Life Event Modeling ✅
 
 ### Overview
 Visual timeline showing projected milestones (retirement, mortgage payoff, goal completion) overlaid on the projection chart. Life event templates that auto-create income/expense changes.
@@ -22,7 +82,7 @@ Visual timeline showing projected milestones (retirement, mortgage payoff, goal 
 
 ---
 
-## Smart What-If Templates
+## Smart What-If Templates ✅
 
 ### Overview
 Pre-built scenario templates that apply guided modifications without requiring the AI assistant. Users can instantly preview before/after impacts.
@@ -50,7 +110,7 @@ Pre-built scenario templates that apply guided modifications without requiring t
 
 ---
 
-## Export & Shareable Reports
+## Export & Shareable Reports ✅
 
 ### Overview
 PDF export of the financial plan including dashboard metrics, charts, projections, and insights. Shareable links for financial advisor meetings.
