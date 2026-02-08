@@ -84,6 +84,7 @@ model Scenario {
   importLogs  ImportLog[]
   cache       EngineResultCache?
   actualExpenses ActualExpense[]
+  netWorthSnapshots NetWorthSnapshot[]
 
   @@index([householdId])
 }
@@ -366,6 +367,26 @@ model ActualExpense {
   @@unique([scenarioId, category, month])
   @@index([scenarioId])
   @@index([scenarioId, month])
+}
+
+// ============== NET WORTH SNAPSHOTS ==============
+
+model NetWorthSnapshot {
+  id               String   @id @default(cuid())
+  scenarioId       String
+  snapshotDate     DateTime
+  totalAssets      Float
+  totalLiabilities Float
+  netWorth         Float
+  notes            String?
+  isAutomatic      Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@unique([scenarioId, snapshotDate])
+  @@index([scenarioId])
+  @@index([scenarioId, snapshotDate])
 }
 
 // ============== ENGINE CACHE ==============
