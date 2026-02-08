@@ -66,7 +66,7 @@ export default function InvestmentPerformancePage() {
         const response = await fetch(`/api/accounts?scenarioId=${selectedScenarioId}`);
         if (!response.ok) throw new Error("Failed to fetch accounts");
         const data = await response.json();
-        setAccounts(data);
+        setAccounts(data.accounts ?? []);
       } catch (error) {
         console.error("Error fetching accounts:", error);
       } finally {
