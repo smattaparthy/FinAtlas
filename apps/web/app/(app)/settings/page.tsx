@@ -2,6 +2,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { AnthropicKeyManager } from "@/components/settings/AnthropicKeyManager";
 import { HouseholdManager } from "@/components/settings/HouseholdManager";
+import { PreferencesSection } from "@/components/settings/PreferencesSection";
+import { DeleteAccountSection } from "@/components/settings/DeleteAccountSection";
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
@@ -98,50 +100,11 @@ export default async function SettingsPage() {
         }))}
       />
 
-      {/* Preferences Section (placeholder) */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
-        <div className="p-6 border-b border-zinc-800">
-          <h2 className="text-lg font-medium">Preferences</h2>
-          <p className="text-sm text-zinc-400 mt-1">Customize your experience</p>
-        </div>
-        <div className="p-6">
-          <div className="text-zinc-500 text-sm">
-            <p>Preference settings coming soon...</p>
-            <ul className="mt-3 space-y-2 list-disc list-inside text-zinc-600">
-              <li>Currency format preferences</li>
-              <li>Date format preferences</li>
-              <li>Notification settings</li>
-              <li>Theme customization</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+      {/* Preferences */}
+      <PreferencesSection />
 
       {/* Danger Zone */}
-      <div className="rounded-2xl border border-red-900/50 bg-red-950/20 overflow-hidden">
-        <div className="p-6 border-b border-red-900/50">
-          <h2 className="text-lg font-medium text-red-400">Danger Zone</h2>
-          <p className="text-sm text-red-400/70 mt-1">Irreversible actions</p>
-        </div>
-        <div className="p-6">
-          <div className="space-y-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-medium text-zinc-100">Delete Account</p>
-                <p className="text-sm text-zinc-500 mt-1">
-                  Permanently delete your account and all associated data
-                </p>
-              </div>
-              <button
-                disabled
-                className="px-4 py-2 rounded-lg bg-red-900/30 text-red-400 text-sm font-medium opacity-50 cursor-not-allowed"
-              >
-                Delete Account
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <DeleteAccountSection />
     </div>
   );
 }
