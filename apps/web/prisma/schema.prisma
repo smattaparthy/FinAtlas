@@ -402,3 +402,69 @@ model EngineResultCache {
 
   scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
 }
+
+// ============== AI CONVERSATIONS ==============
+
+model Conversation {
+  id          String   @id @default(cuid())
+  scenarioId  String
+  userId      String
+  title       String   @default("New Conversation")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  messages ConversationMessage[]
+
+  @@index([userId])
+  @@index([scenarioId])
+}
+
+model ConversationMessage {
+  id              String   @id @default(cuid())
+  conversationId  String
+  role            String   // "user", "assistant", "system"
+  content         String
+  modification    String?  // JSON string of modification data
+  createdAt       DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+// ============== INSIGHTS ==============
+// InsightType values: "SPENDING_SPIKE", "SAVINGS_RATE", "GOAL_PROGRESS", "DEBT_MILESTONE", "PORTFOLIO_DRIFT", "NET_WORTH_CHANGE", "BUDGET_ALERT", "UPCOMING_EVENT"
+// InsightSeverity values: "INFO", "WARNING", "POSITIVE", "ACTION_NEEDED"
+
+model Insight {
+  id          String    @id @default(cuid())
+  scenarioId  String
+  userId      String
+  type        String
+  severity    String    @default("INFO")
+  title       String
+  message     String
+  data        String?   // JSON string with supporting data
+  dismissedAt DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([scenarioId])
+  @@index([userId, dismissedAt])
+}
+
+// ============== MARKET DATA ==============
+
+model PriceQuote {
+  id        String   @id @default(cuid())
+  symbol    String
+  price     Float
+  change    Float?       // Daily change amount
+  changePct Float?       // Daily change percentage
+  volume    Int?
+  fetchedAt DateTime @default(now())
+
+  @@unique([symbol])
+  @@index([symbol])
+}

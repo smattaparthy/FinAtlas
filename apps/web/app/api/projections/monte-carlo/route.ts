@@ -4,12 +4,17 @@ import { prisma } from "@/lib/db/prisma";
 import { runMonteCarlo } from "@finatlas/engine";
 import type { MonteCarloConfig } from "@finatlas/engine";
 import { buildEngineInput } from "@/lib/engine/buildEngineInput";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Rate limit: 10 Monte Carlo runs per minute (computationally expensive)
+  const rateLimit = checkRateLimit(`monte-carlo:${user.id}`, { maxRequests: 10, windowMs: 60000 });
+  if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
   const { searchParams } = new URL(req.url);
   const scenarioId = searchParams.get("scenarioId");

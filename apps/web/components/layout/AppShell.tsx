@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Sidebar } from "./Sidebar";
+import { MobileNav } from "./MobileNav";
 import { HouseholdSelector } from "./HouseholdSelector";
 import { ScenarioSelector } from "./ScenarioSelector";
 import { HouseholdProvider } from "@/contexts/HouseholdContext";
@@ -18,16 +19,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <ScenarioProvider>
         <ToastProvider>
         <PreferencesProvider>
-        <div className="min-h-screen bg-zinc-950 text-zinc-50 flex">
+        <div className="min-h-screen flex" style={{ backgroundColor: `rgb(var(--bg-primary))`, color: `rgb(var(--text-primary))` }}>
           <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
           <div className="flex-1 flex flex-col min-w-0">
-            {/* Header */}
-            <header className="h-16 border-b border-zinc-800 flex items-center justify-between px-4 lg:px-6 shrink-0">
+            {/* Header with safe area insets */}
+            <header className="h-16 flex items-center justify-between px-4 lg:px-6 shrink-0 pt-[env(safe-area-inset-top)]" style={{ borderBottom: `1px solid rgb(var(--border-primary))` }}>
               {/* Mobile menu button */}
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 -ml-2 rounded-xl text-zinc-400 hover:text-zinc-50 hover:bg-zinc-900 transition-colors"
+                className="lg:hidden p-2 -ml-2 rounded-xl transition-colors"
+                style={{ color: `rgb(var(--text-secondary))` }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = `rgb(var(--text-primary))`;
+                  e.currentTarget.style.backgroundColor = `rgb(var(--bg-secondary))`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = `rgb(var(--text-secondary))`;
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
               >
                 <MenuIcon className="w-6 h-6" />
               </button>
@@ -43,11 +53,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </header>
 
-            {/* Main content */}
-            <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+            {/* Main content with padding for mobile nav */}
+            <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6">
               {children}
             </main>
           </div>
+
+          {/* Mobile bottom navigation */}
+          <MobileNav />
         </div>
         </PreferencesProvider>
         </ToastProvider>

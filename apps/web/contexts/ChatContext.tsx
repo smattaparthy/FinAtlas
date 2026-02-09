@@ -10,7 +10,7 @@ interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
   timestamp: string;
-  modification?: Modification;
+  modification?: Modification | string;
   pendingModification?: Modification;
 }
 
@@ -20,20 +20,28 @@ interface ChatState {
   baselineData: ScenarioData | null;
   modifiedData: ScenarioData | null;
   isLoading: boolean;
+  isStreaming: boolean;
   error: string | null;
   scenarioId: string | null;
+  conversationId: string | null;
 }
 
 type ChatAction =
   | { type: "SET_LOADING"; loading: boolean }
+  | { type: "SET_STREAMING"; streaming: boolean }
   | { type: "SET_ERROR"; error: string | null }
   | { type: "LOAD_BASELINE"; data: ScenarioData; scenarioId: string }
   | { type: "ADD_USER_MESSAGE"; message: string }
+  | { type: "START_ASSISTANT_MESSAGE" }
+  | { type: "STREAM_DELTA"; text: string }
+  | { type: "COMPLETE_ASSISTANT_MESSAGE"; message: string; pendingModification?: Modification }
   | { type: "ADD_ASSISTANT_MESSAGE"; message: string; pendingModification?: Modification }
   | { type: "CONFIRM_MODIFICATION"; modificationId: string }
   | { type: "REJECT_MODIFICATION"; modificationId: string }
   | { type: "UNDO_MODIFICATION" }
-  | { type: "RESET_CONVERSATION" };
+  | { type: "RESET_CONVERSATION" }
+  | { type: "LOAD_CONVERSATION"; conversationId: string; messages: ChatMessage[] }
+  | { type: "SET_CONVERSATION_ID"; conversationId: string | null };
 
 const initialState: ChatState = {
   messages: [],
@@ -41,8 +49,10 @@ const initialState: ChatState = {
   baselineData: null,
   modifiedData: null,
   isLoading: false,
+  isStreaming: false,
   error: null,
   scenarioId: null,
+  conversationId: null,
 };
 
 function chatReducer(state: ChatState, action: ChatAction): ChatState {
@@ -50,8 +60,11 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "SET_LOADING":
       return { ...state, isLoading: action.loading };
 
+    case "SET_STREAMING":
+      return { ...state, isStreaming: action.streaming };
+
     case "SET_ERROR":
-      return { ...state, error: action.error, isLoading: false };
+      return { ...state, error: action.error, isLoading: false, isStreaming: false };
 
     case "LOAD_BASELINE":
       return {
@@ -75,6 +88,56 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
           },
         ],
       };
+
+    case "START_ASSISTANT_MESSAGE":
+      return {
+        ...state,
+        messages: [
+          ...state.messages,
+          {
+            id: `msg-${Date.now()}`,
+            role: "assistant",
+            content: "",
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        isStreaming: true,
+      };
+
+    case "STREAM_DELTA": {
+      const lastMessageIndex = state.messages.length - 1;
+      if (lastMessageIndex < 0) return state;
+
+      const updatedMessages = [...state.messages];
+      updatedMessages[lastMessageIndex] = {
+        ...updatedMessages[lastMessageIndex],
+        content: updatedMessages[lastMessageIndex].content + action.text,
+      };
+
+      return {
+        ...state,
+        messages: updatedMessages,
+      };
+    }
+
+    case "COMPLETE_ASSISTANT_MESSAGE": {
+      const lastMessageIndex = state.messages.length - 1;
+      if (lastMessageIndex < 0) return state;
+
+      const updatedMessages = [...state.messages];
+      updatedMessages[lastMessageIndex] = {
+        ...updatedMessages[lastMessageIndex],
+        content: action.message,
+        pendingModification: action.pendingModification,
+      };
+
+      return {
+        ...state,
+        messages: updatedMessages,
+        isLoading: false,
+        isStreaming: false,
+      };
+    }
 
     case "ADD_ASSISTANT_MESSAGE":
       return {
@@ -144,6 +207,44 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         messages: [],
         modifications: [],
         modifiedData: state.baselineData,
+        conversationId: null,
+      };
+
+    case "LOAD_CONVERSATION": {
+      // Parse modifications from messages
+      const modifications: Modification[] = [];
+      const messages = action.messages.map((msg) => {
+        if (msg.modification) {
+          try {
+            const mod = typeof msg.modification === 'string'
+              ? JSON.parse(msg.modification) as Modification
+              : msg.modification;
+            modifications.push(mod);
+            return { ...msg, modification: mod, pendingModification: undefined };
+          } catch {
+            return msg;
+          }
+        }
+        return msg;
+      });
+
+      const modifiedData = state.baselineData
+        ? applyModifications(state.baselineData, modifications)
+        : null;
+
+      return {
+        ...state,
+        conversationId: action.conversationId,
+        messages,
+        modifications,
+        modifiedData,
+      };
+    }
+
+    case "SET_CONVERSATION_ID":
+      return {
+        ...state,
+        conversationId: action.conversationId,
       };
 
     default:
@@ -158,6 +259,8 @@ interface ChatContextValue {
   rejectModification: (messageId: string) => void;
   undoLastModification: () => void;
   resetConversation: () => void;
+  loadConversation: (id: string) => Promise<void>;
+  startNewConversation: () => void;
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -206,8 +309,37 @@ export function ChatProvider({
     if (!state.baselineData) return;
 
     try {
+      // Create conversation if this is the first message
+      let currentConversationId = state.conversationId;
+      if (!currentConversationId) {
+        const title = message.length > 50 ? `${message.slice(0, 50)}...` : message;
+        const createResponse = await fetch("/api/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ scenarioId, title }),
+        });
+
+        if (!createResponse.ok) throw new Error("Failed to create conversation");
+
+        const { conversation } = await createResponse.json();
+        currentConversationId = conversation.id;
+        dispatch({ type: "SET_CONVERSATION_ID", conversationId: currentConversationId });
+      }
+
       dispatch({ type: "ADD_USER_MESSAGE", message });
+
+      // Save user message to database
+      await fetch(`/api/conversations/${currentConversationId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: "user",
+          content: message,
+        }),
+      });
+
       dispatch({ type: "SET_LOADING", loading: true });
+      dispatch({ type: "START_ASSISTANT_MESSAGE" });
 
       const conversationHistory = state.messages.map((msg) => ({
         role: msg.role as "user" | "assistant",
@@ -226,13 +358,62 @@ export function ChatProvider({
       });
 
       if (!response.ok) throw new Error("Failed to send message");
+      if (!response.body) throw new Error("Response body is null");
 
-      const data = await response.json();
-      dispatch({
-        type: "ADD_ASSISTANT_MESSAGE",
-        message: data.message,
-        pendingModification: data.modification,
-      });
+      // Read streaming response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let assistantMessage = "";
+      let assistantModification: Modification | undefined;
+
+      dispatch({ type: "SET_LOADING", loading: false });
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim() || !line.startsWith("data: ")) continue;
+
+          try {
+            const data = JSON.parse(line.slice(6));
+
+            if (data.type === "delta") {
+              dispatch({ type: "STREAM_DELTA", text: data.text });
+            } else if (data.type === "done") {
+              assistantMessage = data.text;
+              assistantModification = data.modification;
+              dispatch({
+                type: "COMPLETE_ASSISTANT_MESSAGE",
+                message: data.text,
+                pendingModification: data.modification,
+              });
+            } else if (data.type === "error") {
+              throw new Error(data.error);
+            }
+          } catch (parseError) {
+            console.error("Failed to parse SSE line:", line, parseError);
+          }
+        }
+      }
+
+      // Save assistant message to database
+      if (assistantMessage && currentConversationId) {
+        await fetch(`/api/conversations/${currentConversationId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            role: "assistant",
+            content: assistantMessage,
+            modification: assistantModification ? JSON.stringify(assistantModification) : null,
+          }),
+        });
+      }
     } catch (error) {
       dispatch({
         type: "SET_ERROR",
@@ -260,6 +441,47 @@ export function ChatProvider({
     dispatch({ type: "RESET_CONVERSATION" });
   };
 
+  const loadConversation = async (id: string) => {
+    try {
+      dispatch({ type: "SET_LOADING", loading: true });
+      const response = await fetch(`/api/conversations/${id}`);
+      if (!response.ok) throw new Error("Failed to load conversation");
+
+      const { conversation } = await response.json();
+
+      const messages: ChatMessage[] = conversation.messages.map((msg: {
+        id: string;
+        role: string;
+        content: string;
+        modification: string | null;
+        createdAt: string;
+      }) => ({
+        id: msg.id,
+        role: msg.role as "user" | "assistant" | "system",
+        content: msg.content,
+        timestamp: msg.createdAt,
+        modification: msg.modification,
+      }));
+
+      dispatch({
+        type: "LOAD_CONVERSATION",
+        conversationId: id,
+        messages,
+      });
+    } catch (error) {
+      dispatch({
+        type: "SET_ERROR",
+        error: error instanceof Error ? error.message : "Failed to load conversation",
+      });
+    } finally {
+      dispatch({ type: "SET_LOADING", loading: false });
+    }
+  };
+
+  const startNewConversation = () => {
+    dispatch({ type: "RESET_CONVERSATION" });
+  };
+
   return (
     <ChatContext.Provider
       value={{
@@ -269,6 +491,8 @@ export function ChatProvider({
         rejectModification,
         undoLastModification,
         resetConversation,
+        loadConversation,
+        startNewConversation,
       }}
     >
       {children}

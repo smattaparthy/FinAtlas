@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '9.0.0'
+
+jobs:
+  ci:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Setup Next.js cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/apps/web/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: cd apps/web && npx prisma generate
+        env:
+          DATABASE_URL: file:./test.db
+
+      - name: Typecheck engine
+        run: pnpm --filter @finatlas/engine typecheck
+
+      - name: Typecheck web
+        run: pnpm --filter @finatlas/web typecheck
+        env:
+          DATABASE_URL: file:./test.db
+
+      - name: Run engine tests
+        run: pnpm --filter @finatlas/engine test
+
+      - name: Run web tests
+        run: pnpm --filter @finatlas/web test
+        env:
+          DATABASE_URL: file:./test.db
+          AUTH_JWT_SECRET: test-secret-key-for-ci-only-do-not-use-in-production
+
+      - name: Build web app
+        run: pnpm --filter @finatlas/web build
+        env:
+          DATABASE_URL: file:./test.db
+          AUTH_JWT_SECRET: test-secret-key-for-ci-only-do-not-use-in-production
+          AUTH_COOKIE_NAME: finatlas-session

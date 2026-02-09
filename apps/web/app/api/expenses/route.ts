@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { z } from "zod";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 const createExpenseSchema = z.object({
   scenarioId: z.string().min(1, "Scenario ID is required"),
@@ -64,6 +65,10 @@ export async function POST(req: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Rate limit: 100 requests per minute for standard CRUD operations
+    const rateLimit = checkRateLimit(`crud:${user.id}`, { maxRequests: 100, windowMs: 60000 });
+    if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
     const body = await req.json().catch(() => null);
     if (!body) {

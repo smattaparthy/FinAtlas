@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 type ExportType = "incomes" | "expenses" | "loans" | "accounts" | "goals";
 
@@ -134,6 +135,10 @@ export async function GET(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Rate limit: 20 exports per minute to prevent abuse
+    const rateLimit = checkRateLimit(`export:${user.id}`, { maxRequests: 20, windowMs: 60000 });
+    if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
     // Get query params
     const searchParams = request.nextUrl.searchParams;

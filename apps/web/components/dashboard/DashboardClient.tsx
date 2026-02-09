@@ -7,6 +7,7 @@ import HealthScoreGauge from "@/components/dashboard/HealthScoreGauge";
 import ComponentScores from "@/components/dashboard/ComponentScores";
 import InsightsPanel from "@/components/dashboard/InsightsPanel";
 import DashboardConfig from "@/components/dashboard/DashboardConfig";
+import { InsightsWidget } from "@/components/insights/InsightsWidget";
 import { formatCurrency } from "@/lib/format";
 import { DashboardSkeleton } from "@/components/ui/Skeleton";
 import {
@@ -263,6 +264,10 @@ export function DashboardClient({ userName }: { userName: string }) {
       healthScore && healthScore.insights.length > 0 ? (
         <InsightsPanel key="recent-insights" insights={healthScore.insights} />
       ) : null,
+
+    "proactive-insights": selectedScenarioId ? (
+      <InsightsWidget key="proactive-insights" />
+    ) : null,
   }), [data, healthScore, selectedScenarioId]);
 
   // Render widgets sorted by user-configured order, filtered by enabled state

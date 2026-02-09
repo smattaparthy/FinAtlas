@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import HoldingForm from "@/components/forms/HoldingForm";
 import ContributionForm from "@/components/forms/ContributionForm";
+import HoldingsTable from "@/components/investments/HoldingsTable";
 
 type Holding = {
   id: string;
@@ -378,27 +379,27 @@ export default function AccountDetailPage() {
           </div>
         )}
 
-        {account.holdings.length === 0 ? (
-          <p className="text-zinc-500 text-sm">No holdings yet.</p>
-        ) : (
-          <div className="space-y-2">
+        <HoldingsTable
+          holdings={account.holdings}
+          onRefresh={() => {
+            // Optionally refetch account data
+          }}
+        />
+
+        {/* Management Buttons */}
+        {account.holdings.length > 0 && (
+          <div className="mt-4 space-y-2">
             {account.holdings.map((holding) => (
               <div
                 key={holding.id}
-                className="flex items-center justify-between p-3 border border-zinc-800 rounded-xl"
+                className="flex items-center justify-between p-3 border border-zinc-800/50 rounded-xl bg-zinc-900/20"
               >
                 <div className="flex items-center gap-4">
                   <div>
-                    <div className="font-medium">{holding.symbol}</div>
-                    {holding.name && (
+                    <div className="font-medium text-sm">{holding.symbol}</div>
+                    {holding.name && holding.name !== holding.symbol && (
                       <div className="text-xs text-zinc-500">{holding.name}</div>
                     )}
-                  </div>
-                  <div className="text-sm text-zinc-400">
-                    {holding.shares.toLocaleString()} shares
-                  </div>
-                  <div className="text-sm">
-                    {holding.costBasis !== null ? formatCurrency(holding.costBasis) : "—"}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

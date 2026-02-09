@@ -31,6 +31,7 @@ const navSections: NavSection[] = [
     label: "Taxes & Investing",
     items: [
       { href: "/tax-estimation", label: "Tax Est.", icon: TaxIcon },
+      { href: "/tax-strategy", label: "Tax Strategy", icon: TaxStrategyIcon },
       { href: "/investments", label: "Investments", icon: InvestmentIcon },
       { href: "/rebalancing", label: "Rebalancing", icon: RebalancingIcon },
       { href: "/investment-performance", label: "Performance", icon: PerformanceIcon },
@@ -60,6 +61,7 @@ const navSections: NavSection[] = [
   {
     label: "Analysis",
     items: [
+      { href: "/insights", label: "Insights", icon: InsightsIcon },
       { href: "/financial-health", label: "Health Score", icon: HealthScoreIcon },
       { href: "/charts", label: "Charts", icon: ChartIcon },
       { href: "/visualizations", label: "Visualizations", icon: VisualizationsIcon },
@@ -76,6 +78,8 @@ const navSections: NavSection[] = [
       { href: "/fire-calculator", label: "FIRE Calc", icon: FireCalcIcon },
       { href: "/emergency-fund", label: "Emergency Fund", icon: EmergencyFundIcon },
       { href: "/retirement-income", label: "Income Strategy", icon: IncomeStrategyIcon },
+      { href: "/healthcare", label: "Healthcare Costs", icon: HealthcareIcon },
+      { href: "/social-security", label: "Social Security", icon: SocialSecurityIcon },
     ],
   },
   {
@@ -140,17 +144,21 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 z-50 h-full w-64 bg-zinc-950 border-r border-zinc-800
+          fixed top-0 left-0 z-50 h-full w-64
           transform transition-transform duration-200 ease-in-out
           lg:translate-x-0 lg:static lg:z-0
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
+        style={{
+          backgroundColor: `rgb(var(--sidebar-bg))`,
+          borderRight: `1px solid rgb(var(--sidebar-border))`
+        }}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-zinc-800">
-            <h1 className="text-xl font-semibold text-zinc-50">FinAtlas</h1>
-            <p className="text-xs text-zinc-500 mt-1">Financial Planning</p>
+          <div className="p-6" style={{ borderBottom: `1px solid rgb(var(--sidebar-border))` }}>
+            <h1 className="text-xl font-semibold" style={{ color: `rgb(var(--text-primary))` }}>FinAtlas</h1>
+            <p className="text-xs mt-1" style={{ color: `rgb(var(--text-muted))` }}>Financial Planning</p>
           </div>
 
           {/* Navigation */}
@@ -159,15 +167,27 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
             <Link
               href="/"
               onClick={onClose}
-              className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
-                transition-colors duration-150
-                ${
-                  pathname === "/"
-                    ? "bg-zinc-800/80 text-zinc-50 border-l-2 border-emerald-400 pl-[10px]"
-                    : "text-zinc-400 hover:text-zinc-50 hover:bg-zinc-900"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150"
+              style={pathname === "/" ? {
+                backgroundColor: `rgba(var(--sidebar-active), 0.8)`,
+                color: `rgb(var(--text-primary))`,
+                borderLeft: `2px solid rgb(var(--accent-emerald))`,
+                paddingLeft: '10px'
+              } : {
+                color: `rgb(var(--text-secondary))`
+              }}
+              onMouseEnter={(e) => {
+                if (pathname !== "/") {
+                  e.currentTarget.style.color = `rgb(var(--text-primary))`;
+                  e.currentTarget.style.backgroundColor = `rgb(var(--bg-secondary))`;
                 }
-              `}
+              }}
+              onMouseLeave={(e) => {
+                if (pathname !== "/") {
+                  e.currentTarget.style.color = `rgb(var(--text-secondary))`;
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
             >
               <DashboardIcon className="w-5 h-5" />
               Dashboard
@@ -185,12 +205,18 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                   {/* Section header */}
                   <button
                     onClick={() => toggleSection(section.label)}
-                    className={`
-                      w-full flex items-center justify-between px-3 py-2 mt-1
-                      text-xs uppercase tracking-wider font-semibold
-                      rounded-lg transition-colors duration-150
-                      ${sectionHasActive ? "text-emerald-400" : "text-zinc-500 hover:text-zinc-300"}
-                    `}
+                    className="w-full flex items-center justify-between px-3 py-2 mt-1 text-xs uppercase tracking-wider font-semibold rounded-lg transition-colors duration-150"
+                    style={{ color: sectionHasActive ? `rgb(var(--accent-emerald))` : `rgb(var(--text-muted))` }}
+                    onMouseEnter={(e) => {
+                      if (!sectionHasActive) {
+                        e.currentTarget.style.color = `rgb(var(--text-secondary))`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!sectionHasActive) {
+                        e.currentTarget.style.color = `rgb(var(--text-muted))`;
+                      }
+                    }}
                   >
                     <span>{section.label}</span>
                     <ChevronIcon
@@ -214,15 +240,27 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                           key={item.href}
                           href={item.href}
                           onClick={onClose}
-                          className={`
-                            flex items-center gap-3 pl-5 pr-3 py-2 rounded-xl text-sm font-medium
-                            transition-colors duration-150
-                            ${
-                              isActive
-                                ? "bg-zinc-800/80 text-zinc-50 border-l-2 border-emerald-400 pl-[18px]"
-                                : "text-zinc-400 hover:text-zinc-50 hover:bg-zinc-900"
+                          className="flex items-center gap-3 pl-5 pr-3 py-2 rounded-xl text-sm font-medium transition-colors duration-150"
+                          style={isActive ? {
+                            backgroundColor: `rgba(var(--sidebar-active), 0.8)`,
+                            color: `rgb(var(--text-primary))`,
+                            borderLeft: `2px solid rgb(var(--accent-emerald))`,
+                            paddingLeft: '18px'
+                          } : {
+                            color: `rgb(var(--text-secondary))`
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isActive) {
+                              e.currentTarget.style.color = `rgb(var(--text-primary))`;
+                              e.currentTarget.style.backgroundColor = `rgb(var(--bg-secondary))`;
                             }
-                          `}
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isActive) {
+                              e.currentTarget.style.color = `rgb(var(--text-secondary))`;
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }
+                          }}
                         >
                           <Icon className="w-4.5 h-4.5" />
                           {item.label}
@@ -238,15 +276,27 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
             <Link
               href="/settings"
               onClick={onClose}
-              className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
-                transition-colors duration-150 mt-1
-                ${
-                  pathname === "/settings"
-                    ? "bg-zinc-800/80 text-zinc-50 border-l-2 border-emerald-400 pl-[10px]"
-                    : "text-zinc-400 hover:text-zinc-50 hover:bg-zinc-900"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 mt-1"
+              style={pathname === "/settings" ? {
+                backgroundColor: `rgba(var(--sidebar-active), 0.8)`,
+                color: `rgb(var(--text-primary))`,
+                borderLeft: `2px solid rgb(var(--accent-emerald))`,
+                paddingLeft: '10px'
+              } : {
+                color: `rgb(var(--text-secondary))`
+              }}
+              onMouseEnter={(e) => {
+                if (pathname !== "/settings") {
+                  e.currentTarget.style.color = `rgb(var(--text-primary))`;
+                  e.currentTarget.style.backgroundColor = `rgb(var(--bg-secondary))`;
                 }
-              `}
+              }}
+              onMouseLeave={(e) => {
+                if (pathname !== "/settings") {
+                  e.currentTarget.style.color = `rgb(var(--text-secondary))`;
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
             >
               <SettingsIcon className="w-5 h-5" />
               Settings
@@ -254,15 +304,24 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           </nav>
 
           {/* Logout button */}
-          <div className="p-4 border-t border-zinc-800">
+          <div className="p-4" style={{ borderTop: `1px solid rgb(var(--sidebar-border))` }}>
             <button
               onClick={handleLogout}
               disabled={loggingOut}
-              className="
-                flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium
-                text-zinc-400 hover:text-zinc-50 hover:bg-zinc-900
-                transition-colors duration-150 disabled:opacity-50
-              "
+              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 disabled:opacity-50"
+              style={{ color: `rgb(var(--text-secondary))` }}
+              onMouseEnter={(e) => {
+                if (!loggingOut) {
+                  e.currentTarget.style.color = `rgb(var(--text-primary))`;
+                  e.currentTarget.style.backgroundColor = `rgb(var(--bg-secondary))`;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loggingOut) {
+                  e.currentTarget.style.color = `rgb(var(--text-secondary))`;
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
             >
               <LogoutIcon className="w-5 h-5" />
               {loggingOut ? "Logging out..." : "Logout"}
@@ -336,6 +395,15 @@ function TaxIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V13.5zm0 2.25h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V18zm2.498-6.75h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V13.5zm0 2.25h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V18zm2.504-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zm0 2.25h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V18zm2.498-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zM8.25 6h7.5v2.25h-7.5V6zM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 002.25 2.25h10.5a2.25 2.25 0 002.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0012 2.25z" />
+    </svg>
+  );
+}
+
+function TaxStrategyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008zm2.498 0h.007v.008h-.007v-.008z" opacity="0.6" />
     </svg>
   );
 }
@@ -536,6 +604,14 @@ function GoalPlannerIcon({ className }: { className?: string }) {
   );
 }
 
+function InsightsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+    </svg>
+  );
+}
+
 function HealthScoreIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -573,6 +649,23 @@ function IncomeStrategyIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+    </svg>
+  );
+}
+
+function SocialSecurityIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+    </svg>
+  );
+}
+
+function HealthcareIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l7.5-7.5 7.5 7.5m-15 6l7.5-7.5 7.5 7.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h.01M15 12h.01M12 9v.01M12 15v.01" />
     </svg>
   );
 }

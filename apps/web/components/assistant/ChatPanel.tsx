@@ -20,11 +20,11 @@ export default function ChatPanel() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [state.messages]);
+  }, [state.messages, state.isStreaming]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || state.isLoading) return;
+    if (!input.trim() || state.isLoading || state.isStreaming) return;
 
     const message = input.trim();
     setInput("");
@@ -60,47 +60,55 @@ export default function ChatPanel() {
           </div>
         )}
 
-        {state.messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-          >
+        {state.messages.map((message, index) => {
+          const isLastMessage = index === state.messages.length - 1;
+          const isStreaming = isLastMessage && state.isStreaming;
+
+          return (
             <div
-              className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                message.role === "user"
-                  ? "bg-blue-600 text-white"
-                  : "bg-zinc-800 text-zinc-100"
-              }`}
+              key={message.id}
+              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
             >
-              <div className="whitespace-pre-wrap">{message.content}</div>
-
-              {/* Confirmation buttons for pending modifications */}
-              {message.pendingModification && (
-                <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={confirmModification}
-                    className="px-3 py-1 rounded bg-green-600 hover:bg-green-700 text-white text-sm"
-                  >
-                    ✓ Confirm
-                  </button>
-                  <button
-                    onClick={() => rejectModification(message.id)}
-                    className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-sm"
-                  >
-                    ✗ Cancel
-                  </button>
+              <div
+                className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                  message.role === "user"
+                    ? "bg-blue-600 text-white"
+                    : "bg-zinc-800 text-zinc-100"
+                }`}
+              >
+                <div className="whitespace-pre-wrap">
+                  {message.content}
+                  {isStreaming && <span className="inline-block w-2 h-4 ml-1 bg-zinc-400 animate-pulse" />}
                 </div>
-              )}
 
-              {/* Show if modification was applied */}
-              {message.modification && (
-                <div className="mt-2 text-xs text-green-400">✓ Applied</div>
-              )}
+                {/* Confirmation buttons for pending modifications */}
+                {message.pendingModification && !isStreaming && (
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={confirmModification}
+                      className="px-3 py-1 rounded bg-green-600 hover:bg-green-700 text-white text-sm"
+                    >
+                      ✓ Confirm
+                    </button>
+                    <button
+                      onClick={() => rejectModification(message.id)}
+                      className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-sm"
+                    >
+                      ✗ Cancel
+                    </button>
+                  </div>
+                )}
+
+                {/* Show if modification was applied */}
+                {message.modification && (
+                  <div className="mt-2 text-xs text-green-400">✓ Applied</div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
-        {state.isLoading && (
+        {state.isLoading && !state.isStreaming && (
           <div className="flex justify-start">
             <div className="bg-zinc-800 text-zinc-400 rounded-lg px-4 py-2">
               <span className="animate-pulse">Thinking...</span>
@@ -125,11 +133,11 @@ export default function ChatPanel() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask a what-if question..."
           className="flex-1 px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-600"
-          disabled={state.isLoading}
+          disabled={state.isLoading || state.isStreaming}
         />
         <button
           type="submit"
-          disabled={state.isLoading || !input.trim()}
+          disabled={state.isLoading || state.isStreaming || !input.trim()}
           className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-medium"
         >
           Send

@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { z } from "zod";
 import { categorizeExpense } from "@/lib/categorization/matchRule";
 import type { CategorizationRule } from "@/lib/categorization/defaultRules";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { validateArrayLength } from "@/lib/validation";
 
 const autoCategorizeSchema = z.object({
   scenarioId: z.string().min(1, "Scenario ID is required"),
@@ -24,6 +26,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Rate limit: 10 auto-categorize operations per minute (processing intensive)
+    const rateLimit = checkRateLimit(`auto-categorize:${user.id}`, { maxRequests: 10, windowMs: 60000 });
+    if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
+
     const body = await req.json().catch(() => null);
     if (!body) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
@@ -38,6 +44,14 @@ export async function POST(req: Request) {
     }
 
     const { scenarioId, rules } = parsed.data;
+
+    // Validate rules array length to prevent DoS (max 50 rules)
+    if (!validateArrayLength(rules, 50)) {
+      return NextResponse.json(
+        { error: "Too many rules. Maximum 50 rules per request." },
+        { status: 400 }
+      );
+    }
 
     // Verify user owns the scenario's household
     const scenario = await prisma.scenario.findUnique({

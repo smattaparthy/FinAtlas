@@ -66,6 +66,13 @@ export const AVAILABLE_WIDGETS: WidgetDefault[] = [
     defaultEnabled: false,
     defaultOrder: 6,
   },
+  {
+    id: "proactive-insights",
+    name: "Proactive Insights",
+    description: "Personalized financial recommendations",
+    defaultEnabled: true,
+    defaultOrder: 7,
+  },
 ];
 
 function getDefaults(): WidgetConfig[] {

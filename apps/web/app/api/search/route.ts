@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { formatCurrency } from "@/lib/format";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 interface SearchResult {
   id: string;
@@ -53,6 +54,10 @@ export async function GET(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Rate limit: 60 searches per minute (autocomplete can be frequent)
+    const rateLimit = checkRateLimit(`search:${user.id}`, { maxRequests: 60, windowMs: 60000 });
+    if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
     const q = req.nextUrl.searchParams.get("q");
     const scenarioId = req.nextUrl.searchParams.get("scenarioId");

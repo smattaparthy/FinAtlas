@@ -25,22 +25,29 @@ export function PreferencesSection() {
   const { preferences, updatePreferences } = usePreferences();
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
-      <div className="p-6 border-b border-zinc-800">
-        <h2 className="text-lg font-medium">Preferences</h2>
-        <p className="text-sm text-zinc-400 mt-1">Customize your experience</p>
+    <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid rgb(var(--border-primary))`, backgroundColor: `rgba(var(--bg-card), 0.5)` }}>
+      <div className="p-6" style={{ borderBottom: `1px solid rgb(var(--border-primary))` }}>
+        <h2 className="text-lg font-medium" style={{ color: `rgb(var(--text-primary))` }}>Preferences</h2>
+        <p className="text-sm mt-1" style={{ color: `rgb(var(--text-secondary))` }}>Customize your experience</p>
       </div>
       <div className="p-6 space-y-6">
         {/* Currency Setting */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-zinc-200">Currency</p>
-            <p className="text-xs text-zinc-500 mt-0.5">Choose your preferred currency format</p>
+            <p className="text-sm font-medium" style={{ color: `rgb(var(--text-primary))` }}>Currency</p>
+            <p className="text-xs mt-0.5" style={{ color: `rgb(var(--text-muted))` }}>Choose your preferred currency format</p>
           </div>
           <select
-            className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 transition-colors w-48"
+            className="rounded-xl px-3 py-2 text-sm focus:outline-none transition-colors w-48"
+            style={{
+              backgroundColor: `rgb(var(--input-bg))`,
+              border: `1px solid rgb(var(--input-border))`,
+              color: `rgb(var(--text-primary))`
+            }}
             value={preferences.currency}
             onChange={(e) => updatePreferences({ currency: e.target.value as Currency })}
+            onFocus={(e) => e.currentTarget.style.borderColor = `rgb(var(--accent-emerald))`}
+            onBlur={(e) => e.currentTarget.style.borderColor = `rgb(var(--input-border))`}
           >
             {CURRENCY_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -53,13 +60,20 @@ export function PreferencesSection() {
         {/* Date Format Setting */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-zinc-200">Date Format</p>
-            <p className="text-xs text-zinc-500 mt-0.5">Choose how dates are displayed</p>
+            <p className="text-sm font-medium" style={{ color: `rgb(var(--text-primary))` }}>Date Format</p>
+            <p className="text-xs mt-0.5" style={{ color: `rgb(var(--text-muted))` }}>Choose how dates are displayed</p>
           </div>
           <select
-            className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 transition-colors w-48"
+            className="rounded-xl px-3 py-2 text-sm focus:outline-none transition-colors w-48"
+            style={{
+              backgroundColor: `rgb(var(--input-bg))`,
+              border: `1px solid rgb(var(--input-border))`,
+              color: `rgb(var(--text-primary))`
+            }}
             value={preferences.dateFormat}
             onChange={(e) => updatePreferences({ dateFormat: e.target.value as DateFormat })}
+            onFocus={(e) => e.currentTarget.style.borderColor = `rgb(var(--accent-emerald))`}
+            onBlur={(e) => e.currentTarget.style.borderColor = `rgb(var(--input-border))`}
           >
             {DATE_FORMAT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -72,13 +86,20 @@ export function PreferencesSection() {
         {/* Theme Setting */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-zinc-200">Theme</p>
-            <p className="text-xs text-zinc-500 mt-0.5">Customize the app appearance</p>
+            <p className="text-sm font-medium" style={{ color: `rgb(var(--text-primary))` }}>Theme</p>
+            <p className="text-xs mt-0.5" style={{ color: `rgb(var(--text-muted))` }}>Customize the app appearance</p>
           </div>
           <select
-            className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 transition-colors w-48"
+            className="rounded-xl px-3 py-2 text-sm focus:outline-none transition-colors w-48"
+            style={{
+              backgroundColor: `rgb(var(--input-bg))`,
+              border: `1px solid rgb(var(--input-border))`,
+              color: `rgb(var(--text-primary))`
+            }}
             value={preferences.theme}
             onChange={(e) => updatePreferences({ theme: e.target.value as Theme })}
+            onFocus={(e) => e.currentTarget.style.borderColor = `rgb(var(--accent-emerald))`}
+            onBlur={(e) => e.currentTarget.style.borderColor = `rgb(var(--input-border))`}
           >
             {THEME_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -91,11 +112,11 @@ export function PreferencesSection() {
         {/* Notifications Setting */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-zinc-200">Notifications</p>
-            <p className="text-xs text-zinc-500 mt-0.5">Manage notification preferences</p>
+            <p className="text-sm font-medium" style={{ color: `rgb(var(--text-primary))` }}>Notifications</p>
+            <p className="text-xs mt-0.5" style={{ color: `rgb(var(--text-muted))` }}>Manage notification preferences</p>
           </div>
         </div>
-        <p className="text-xs text-zinc-600 -mt-3 text-right">Coming soon</p>
+        <p className="text-xs -mt-3 text-right" style={{ color: `rgb(var(--text-muted))` }}>Coming soon</p>
       </div>
     </div>
   );

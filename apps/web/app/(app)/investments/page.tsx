@@ -9,6 +9,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import { formatCurrency } from "@/lib/format";
+import PortfolioSummary from "@/components/investments/PortfolioSummary";
 
 type Holding = {
   id: string;
@@ -206,12 +207,11 @@ export default function InvestmentsPage() {
         </div>
       )}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
-          <div className="text-xs text-zinc-400 uppercase tracking-wide">Total Value</div>
-          <div className="text-2xl font-semibold mt-1">{formatCurrency(totalBalance)}</div>
-        </div>
+      {/* Portfolio Summary with Market Data */}
+      {selectedScenarioId && <PortfolioSummary scenarioId={selectedScenarioId} />}
+
+      {/* Additional Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
           <div className="text-xs text-zinc-400 uppercase tracking-wide">Monthly Contributions</div>
           <div className="text-2xl font-semibold mt-1">{formatCurrency(totalContributions)}</div>

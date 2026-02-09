@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { z } from "zod";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { validateArrayLength } from "@/lib/validation";
 
 const bulkDeleteSchema = z.object({
   ids: z.array(z.string().min(1)).min(1, "At least one ID is required"),
@@ -14,6 +16,10 @@ export async function POST(req: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Rate limit: 15 bulk operations per minute
+    const rateLimit = checkRateLimit(`bulk-delete:${user.id}`, { maxRequests: 15, windowMs: 60000 });
+    if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
     const body = await req.json().catch(() => null);
     if (!body) {
@@ -29,6 +35,14 @@ export async function POST(req: Request) {
     }
 
     const { ids, scenarioId } = parsed.data;
+
+    // Validate array length to prevent DoS (max 100 items per request)
+    if (!validateArrayLength(ids, 100)) {
+      return NextResponse.json(
+        { error: "Too many items. Maximum 100 items per bulk operation." },
+        { status: 400 }
+      );
+    }
 
     // Verify user owns the scenario's household
     const scenario = await prisma.scenario.findUnique({

@@ -34,6 +34,57 @@
   color-scheme: light;
 }
 
+/* Semantic theme variables - these adapt to light/dark mode */
+:root[data-theme="dark"] {
+  --bg-primary: 9 9 11;           /* zinc-950 */
+  --bg-secondary: 24 24 27;       /* zinc-900 */
+  --bg-tertiary: 39 39 42;        /* zinc-800 */
+  --bg-card: 24 24 27;            /* zinc-900 */
+  --bg-card-hover: 39 39 42;      /* zinc-800 */
+
+  --text-primary: 250 250 250;    /* zinc-50 */
+  --text-secondary: 161 161 170;  /* zinc-400 */
+  --text-muted: 113 113 122;      /* zinc-500 */
+
+  --border-primary: 39 39 42;     /* zinc-800 */
+  --border-secondary: 63 63 70;   /* zinc-700 */
+
+  --accent-emerald: 52 211 153;   /* emerald-400 */
+  --accent-emerald-hover: 16 185 129; /* emerald-500 */
+
+  --input-bg: 39 39 42;           /* zinc-800 */
+  --input-border: 63 63 70;       /* zinc-700 */
+
+  --sidebar-bg: 9 9 11;           /* zinc-950 */
+  --sidebar-border: 39 39 42;     /* zinc-800 */
+  --sidebar-active: 39 39 42;     /* zinc-800 */
+}
+
+:root[data-theme="light"] {
+  --bg-primary: 255 255 255;      /* white */
+  --bg-secondary: 247 247 248;    /* zinc-900 in light (inverted) */
+  --bg-tertiary: 237 237 240;     /* zinc-800 in light (inverted) */
+  --bg-card: 255 255 255;         /* white */
+  --bg-card-hover: 247 247 248;   /* zinc-900 in light */
+
+  --text-primary: 9 9 11;         /* zinc-950 in light (inverted) */
+  --text-secondary: 82 82 91;     /* zinc-600 */
+  --text-muted: 161 161 170;      /* zinc-400 */
+
+  --border-primary: 228 228 231;  /* zinc-200 */
+  --border-secondary: 212 212 216; /* zinc-300 */
+
+  --accent-emerald: 5 150 105;    /* emerald-600 */
+  --accent-emerald-hover: 4 120 87; /* emerald-700 */
+
+  --input-bg: 255 255 255;        /* white */
+  --input-border: 212 212 216;    /* zinc-300 */
+
+  --sidebar-bg: 255 255 255;      /* white */
+  --sidebar-border: 228 228 231;  /* zinc-200 */
+  --sidebar-active: 240 253 244;  /* emerald-50 */
+}
+
 html,
 body {
   height: 100%;
@@ -44,8 +95,8 @@ html {
 }
 
 body {
-  background-color: rgb(var(--zinc-950));
-  color: rgb(var(--zinc-50));
+  background-color: rgb(var(--bg-primary));
+  color: rgb(var(--text-primary));
 }
 
 ::selection {
@@ -107,4 +158,47 @@ body {
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* Theme-aware utility classes */
+.theme-bg {
+  background-color: rgb(var(--bg-primary));
+}
+
+.theme-bg-secondary {
+  background-color: rgb(var(--bg-secondary));
+}
+
+.theme-bg-card {
+  background-color: rgb(var(--bg-card));
+}
+
+.theme-bg-card-hover:hover {
+  background-color: rgb(var(--bg-card-hover));
+}
+
+.theme-text {
+  color: rgb(var(--text-primary));
+}
+
+.theme-text-secondary {
+  color: rgb(var(--text-secondary));
+}
+
+.theme-text-muted {
+  color: rgb(var(--text-muted));
+}
+
+.theme-border {
+  border-color: rgb(var(--border-primary));
+}
+
+.theme-border-secondary {
+  border-color: rgb(var(--border-secondary));
+}
+
+.theme-input {
+  background-color: rgb(var(--input-bg));
+  border-color: rgb(var(--input-border));
+  color: rgb(var(--text-primary));
 }
