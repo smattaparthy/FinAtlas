@@ -1,9 +1,5 @@
 import { NextRequest } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+import { getAnthropicClient } from "@/lib/ai/claude-client";
 
 type CalculationType = 'propertyTax' | 'insurance';
 
@@ -34,7 +30,7 @@ export async function POST(req: NextRequest) {
       ? buildPropertyTaxPrompt(propertyAddress, propertyValue, propertyState, propertyZipCode, propertyCity, propertyCounty)
       : buildInsurancePrompt(propertyAddress, propertyValue, propertyState, propertyZipCode, propertyCity);
 
-    const message = await anthropic.messages.create({
+    const message = await getAnthropicClient().messages.create({
       model: "claude-sonnet-4-5-20250929",
       max_tokens: 1024,
       messages: [{

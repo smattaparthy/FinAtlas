@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
-import { anthropic } from "@/lib/ai/claude-client";
+import { getAnthropicClient } from "@/lib/ai/claude-client";
 import { buildSystemPrompt, parseModificationFromResponse } from "@/lib/ai/prompts";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
           while (toolUseLoopCount < maxToolUseLoops) {
             toolUseLoopCount++;
 
-            const stream = anthropic.messages.stream({
+            const stream = getAnthropicClient().messages.stream({
               model: "claude-sonnet-4-5-20250929",
               max_tokens: 4096,
               system: systemPrompt,
